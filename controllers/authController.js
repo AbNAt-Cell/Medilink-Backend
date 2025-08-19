@@ -37,3 +37,8 @@ export const login = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Return the current user
+export const me = async (req, res) => {
+  res.json(req.user);
+};

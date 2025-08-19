@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
+import usersRoutes from "./routes/admin/usersCRUDRoute.js";
 import cors from 'cors'
 import dotenv from 'dotenv';
 
@@ -16,6 +17,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", usersRoutes)
 
 mongoose
   .connect(
