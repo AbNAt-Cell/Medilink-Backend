@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for medilink-backend on 2025-08-21T21:35:15Z
+# fly.toml app configuration file generated for medilink-backend-wyyaug on 2025-08-21T23:11:57Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'medilink-backend'
+app = 'medilink-backend-wyyaug'
 primary_region = 'jnb'
 
 [build]
