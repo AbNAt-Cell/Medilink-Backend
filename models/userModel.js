@@ -2,10 +2,16 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  firstname: { type: String, required: true },
+  lastname: { type: String, required: true },
+  dateofBirth: { type: Date, required: true },
+  phone: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
+  country: String,
   password: { type: String, required: true },
   avatarUrl: String,
+  signatureUrl: String,
+  address: String,
   bio: String,
   specialization: String, // for doctors
   role: { type: String, enum: ["admin", "doctor", "marketer"], default: "doctor" }
