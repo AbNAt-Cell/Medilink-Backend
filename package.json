@@ -31,5 +31,8 @@
   "bugs": {
     "url": "https://github.com/AbNAt-Cell/Medilink-Backend/issues"
   },
-  "homepage": "https://github.com/AbNAt-Cell/Medilink-Backend#readme"
+  "homepage": "https://github.com/AbNAt-Cell/Medilink-Backend#readme",
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10"
+  }
 }
