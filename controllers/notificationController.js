@@ -1,4 +1,4 @@
-import Notification from "../models/Notification.js";
+import Notification from "../models/Notifications.js";
 
 export const listNotifications = async (req, res) => {
   const items = await Notification.find({ user: req.user._id })
