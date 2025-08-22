@@ -32,6 +32,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (!user.role) {
+      return res.status(500).json({ message: "User role is missing. Please contact support." });
+    }
+
     res.json({ token: generateToken(user._id, user.role) });
   } catch (err) {
     res.status(500).json({ message: err.message });
