@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes.js";
 import usersRoutes from "./routes/admin/usersCRUDRoute.js";
 import conversationRoutes from "./routes/conversationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js"; 
+import appointmentRoutes from "./routes/appointmentRoutes.js";
 import formRoutes from "./routes/formRoutes.js";
 import socketSetup from "./socket/socket.js";
 import cors from 'cors'
@@ -27,6 +28,8 @@ app.use("/api/users", usersRoutes);
 app.use("/api/conversations", conversationRoutes); 
 app.use("/api/messages", messageRoutes); 
 app.use("/api/forms", formRoutes);
+app.use("/api/appointments", appointmentRoutes);
+
 
 // SOCKET.IO
 socketSetup(httpServer); // 👈 Initialize socket

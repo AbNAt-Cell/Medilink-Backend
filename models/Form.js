@@ -10,7 +10,11 @@ const formSchema = new mongoose.Schema(
     details: { type: String, required: true },
     marketer: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" }
+    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    assessment: { type: String },
+    // Auto-added when doctor submits
+    assessmentSignature: { type: String },
+    assessmentSignedAt: { type: Date }
   },
   { timestamps: true }
 );
