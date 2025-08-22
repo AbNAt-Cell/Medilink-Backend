@@ -1,6 +1,6 @@
 // socket.js
 import { Server } from "socket.io";
-import Message from "../models/Messages.js";
+import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
 
 // Keep a map of connected users { userId: socketId }
