@@ -1,4 +1,3 @@
-// socket.js
 import { Server } from "socket.io";
 import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
@@ -8,10 +7,15 @@ import User from "../models/userModel.js";
 const onlineUsers = new Map();
 
 export default function socketSetup(httpServer) {
+  const allowedOrigins = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(",")
+    : ["http://localhost:3000"];
+
   const io = new Server(httpServer, {
     cors: {
-      origin: ["http://localhost:3000"],
-      methods: ["GET", "POST"]
+      origin: allowedOrigins,
+      methods: ["GET", "POST"],
+      credentials: true
     }
   });
 
@@ -22,6 +26,7 @@ export default function socketSetup(httpServer) {
     socket.on("join", (userId) => {
       onlineUsers.set(userId, socket.id);
       console.log(`✅ User ${userId} connected`);
+      io.emit("user:online", { userId });
     });
 
     // Handle sending a new message
@@ -76,7 +81,7 @@ export default function socketSetup(httpServer) {
       }
     });
 
-    // WebRTC placeholders
+    // WebRTC placeholders (for voice/video)
     socket.on("call:offer", (data) => {
       socket.broadcast.emit("call:offer", data);
     });
@@ -85,12 +90,14 @@ export default function socketSetup(httpServer) {
       socket.broadcast.emit("call:answer", data);
     });
 
+    // Disconnect
     socket.on("disconnect", () => {
       console.log("🔌 Client disconnected", socket.id);
       for (let [userId, sockId] of onlineUsers.entries()) {
         if (sockId === socket.id) {
           onlineUsers.delete(userId);
           console.log(`❌ User ${userId} disconnected`);
+          io.emit("user:offline", { userId });
         }
       }
     });
@@ -99,11 +106,14 @@ export default function socketSetup(httpServer) {
   return io;
 }
 
-// (for statsController.js) ---
+// --- Helpers for stats ---
 export const getUserSocket = (userId) => onlineUsers.get(userId.toString());
 
 export const getOnlineDoctors = async () => {
   const doctorIds = Array.from(onlineUsers.keys());
-  const doctors = await User.find({ _id: { $in: doctorIds }, role: "doctor" }).select("_id");
+  const doctors = await User.find({
+    _id: { $in: doctorIds },
+    role: "doctor"
+  }).select("_id");
   return doctors.map((d) => d._id.toString());
 };
