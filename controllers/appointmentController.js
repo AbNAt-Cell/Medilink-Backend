@@ -95,3 +95,53 @@ export const getAllAppointments = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Update Appointment (Marketer only)
+export const updateAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // ensure marketer owns this appointment
+    if (appointment.marketer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to edit this appointment" });
+    }
+
+    const updated = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    res.json(updated);
+  } catch (err) {
+    console.error("❌ Error updating appointment:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//  Delete Appointment (Marketer only)
+export const deleteAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // ensure marketer owns this appointment
+    if (appointment.marketer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to delete this appointment" });
+    }
+
+    await appointment.deleteOne();
+
+    res.json({ message: "Appointment deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting appointment:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

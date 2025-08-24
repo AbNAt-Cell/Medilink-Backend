@@ -5,7 +5,9 @@ import {
   getDoctorAppointments,
   getMarketerAppointments,
   decideAppointment,
-  getAllAppointments
+  getAllAppointments,
+  updateAppointment,
+  deleteAppointment
 } from "../controllers/appointmentController.js";
 
 const router = express.Router();
@@ -24,5 +26,11 @@ router.post("/:appointmentId/decision", protect, requireRole("doctor"), decideAp
 
 // Admin sees all
 router.get("/", protect, requireRole("admin"), getAllAppointments);
+
+// Update appointment (marketer only)
+router.put("/:id", protect, requireRole("marketer"), updateAppointment);
+
+// Delete appointment (marketer only)
+router.delete("/:id", protect, requireRole("marketer"), deleteAppointment);
 
 export default router;
