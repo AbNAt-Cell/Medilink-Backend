@@ -2,6 +2,7 @@
 import { Server } from "socket.io";
 import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
+import User from "../models/userModel.js";
 
 // Keep a map of connected users { userId: socketId }
 const onlineUsers = new Map();
@@ -97,3 +98,12 @@ export default function socketSetup(httpServer) {
 
   return io;
 }
+
+// (for statsController.js) ---
+export const getUserSocket = (userId) => onlineUsers.get(userId.toString());
+
+export const getOnlineDoctors = async () => {
+  const doctorIds = Array.from(onlineUsers.keys());
+  const doctors = await User.find({ _id: { $in: doctorIds }, role: "doctor" }).select("_id");
+  return doctors.map((d) => d._id.toString());
+};

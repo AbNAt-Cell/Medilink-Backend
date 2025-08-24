@@ -7,6 +7,7 @@ import conversationRoutes from "./routes/conversationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js"; 
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import formRoutes from "./routes/formRoutes.js";
+import statsRoutes from "./routes/statsRoutes.js";
 import socketSetup from "./socket/socket.js";
 import cors from 'cors'
 import dotenv from 'dotenv';
@@ -28,6 +29,7 @@ app.use("/api/users", usersRoutes);
 app.use("/api/conversations", conversationRoutes); 
 app.use("/api/messages", messageRoutes); 
 app.use("/api/forms", formRoutes);
+app.use("/api/stats", statsRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
 
