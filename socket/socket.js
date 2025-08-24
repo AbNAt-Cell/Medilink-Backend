@@ -10,7 +10,7 @@ const onlineUsers = new Map();
 export default function socketSetup(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: "*", // set to frontend URL in production
+      origin: ["http://localhost:3000"],
       methods: ["GET", "POST"]
     }
   });
