@@ -20,7 +20,7 @@ const httpServer = createServer(app);
 // ✅ Dynamic allowed origins from .env
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(",")
-  : ["http://localhost:3000"];
+  : ["http://localhost:3000", "https://f5tzn3-3000.csb.app"];
 
 // ✅ Apply CORS properly
 app.use(

@@ -46,3 +46,29 @@ export const login = async (req, res) => {
 export const me = async (req, res) => {
   res.json(req.user);
 };
+
+// Search users by name, email, or phone
+export const searchUsers = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    // case-insensitive regex search on firstname, lastname, email, phone
+    const users = await User.find({
+      $or: [
+        { firstname: { $regex: query, $options: "i" } },
+        { lastname: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } },
+        { phone: { $regex: query, $options: "i" } },
+      ],
+    }).select("-password"); // hide password
+
+    res.json(users);
+  } catch (err) {
+    console.error("Error searching users:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
