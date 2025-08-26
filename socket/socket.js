@@ -2,20 +2,35 @@ import { Server } from "socket.io";
 import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
 import User from "../models/userModel.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Keep a map of connected users { userId: socketId }
 const onlineUsers = new Map();
 
 export default function socketSetup(httpServer) {
+  // ✅ Reuse the same allowedOrigins from .env
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(",")
     : ["http://localhost:3000", "https://f5tzn3-3000.csb.app"];
 
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
-      methods: ["GET", "POST"],
-      credentials: true
+      origin: function (origin, callback) {
+        // Allow Postman / server requests
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          console.error("❌ Socket CORS blocked:", origin);
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      credentials: true,
+      optionsSuccessStatus: 200
     }
   });
 
@@ -104,7 +119,7 @@ export default function socketSetup(httpServer) {
   });
 
   return io;
-}
+};
 
 // --- Helpers for stats ---
 export const getUserSocket = (userId) => onlineUsers.get(userId.toString());

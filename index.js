@@ -10,35 +10,18 @@ import formRoutes from "./routes/formRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import socketSetup from "./socket/socket.js";
 import cors from "cors";
-import dotenv from "dotenv";
+import { corsOptions } from "./cors.js";
+import dotenv from "dotenv";  
 
 dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
 
-// ✅ Dynamic allowed origins from .env
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",")
-  : ["http://localhost:3000", "https://f5tzn3-3000.csb.app"];
-
-// ✅ Apply CORS properly
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.error("❌ Blocked by CORS:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true
-  })
-);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors(corsOptions));
 
 // Health check
 app.get("/health", (req, res) => res.status(200).json({ message: "ok" }));
@@ -52,7 +35,7 @@ app.use("/api/forms", formRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// ✅ Setup Socket.IO with same CORS rules
+// Setup Socket.IO with same CORS rules
 socketSetup(httpServer);
 
 mongoose
