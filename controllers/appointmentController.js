@@ -1,33 +1,5 @@
 import Appointment from "../models/Appointments.js";
-import Form from "../models/Form.js";
-
-
-// Marketer schedules an appointment from an approved form
-
-export const createAppointment = async (req, res) => {
-  try {
-    const { formId, date, time } = req.body;
-
-    const form = await Form.findById(formId);
-    if (!form) return res.status(404).json({ message: "Form not found" });
-    if (form.status !== "approved") {
-      return res.status(400).json({ message: "Form is yet to be approved" });
-    }
-
-    const appointment = await Appointment.create({
-      form: formId,
-      marketer: req.user._id,
-      doctor: form.doctor,
-      date,
-      time
-    });
-
-    res.status(201).json(appointment);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
+import { pushNotification } from "./notificationController.js";
 
 // Doctor gets their appointments
 
@@ -96,52 +68,48 @@ export const getAllAppointments = async (req, res) => {
   }
 };
 
-// Update Appointment (Marketer only)
-export const updateAppointment = async (req, res) => {
+
+// Edit appointment
+export const editAppointment = async (req, res) => {
   try {
-    const appointment = await Appointment.findById(req.params.id);
+    const appt = await Appointment.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    if (!appointment) {
-      return res.status(404).json({ message: "Appointment not found" });
-    }
+    if (!appt) return res.status(404).json({ message: "Appointment not found" });
 
-    // ensure marketer owns this appointment
-    if (appointment.marketer.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to edit this appointment" });
-    }
+    // Notify doctor
+    await pushNotification({
+      userId: appt.doctor,
+      type: "appointment",
+      message: "✏️ An appointment you are assigned to has been updated.",
+      link: `/appointments/${appt._id}`,
+      io: req.io
+    });
 
-    const updated = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    res.json(updated);
+    res.json(appt);
   } catch (err) {
-    console.error("❌ Error updating appointment:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-//  Delete Appointment (Marketer only)
+//  Delete appointment
 export const deleteAppointment = async (req, res) => {
   try {
-    const appointment = await Appointment.findById(req.params.id);
+    const appt = await Appointment.findById(req.params.id);
+    if (!appt) return res.status(404).json({ message: "Appointment not found" });
 
-    if (!appointment) {
-      return res.status(404).json({ message: "Appointment not found" });
-    }
+    await Appointment.findByIdAndDelete(req.params.id);
 
-    // ensure marketer owns this appointment
-    if (appointment.marketer.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to delete this appointment" });
-    }
+    // Notify doctor
+    await pushNotification({
+      userId: appt.doctor,
+      type: "appointment",
+      message: "❌ An appointment you were assigned to has been cancelled.",
+      link: `/appointments`,
+      io: req.io
+    });
 
-    await appointment.deleteOne();
-
-    res.json({ message: "Appointment deleted successfully" });
+    res.json({ message: "Appointment deleted" });
   } catch (err) {
-    console.error("❌ Error deleting appointment:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

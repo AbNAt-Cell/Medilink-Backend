@@ -1,12 +1,18 @@
+// models/Notification.js
 import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    type: { type: String, enum: ["appointment", "form"], required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // doctor
+    type: {
+      type: String,
+      enum: ["form", "reminder", "appointment"],
+      required: true
+    },
     message: { type: String, required: true },
-    link: { type: String }, // e.g., a frontend route (chat, appointment, form)
-    read: { type: Boolean, default: false }
+    link: String, // frontend link e.g. /forms/:id or /appointments/:id
+    read: { type: Boolean, default: false },
+    recurring: { type: Boolean, default: false } // for reminders
   },
   { timestamps: true }
 );

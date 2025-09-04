@@ -1,81 +1,165 @@
 import Form from "../models/Form.js";
-import User from "../models/userModel.js";
+import Appointment from "../models/Appointments.js"; // if you want auto-create
+import Notification from "../models/Notifications.js";
+import { getUserSocket } from "../socket/socket.js";
 
-/**
- * Marketer submits form for a doctor
- */
+// Marketer submits a new form
 export const submitForm = async (req, res) => {
   try {
-    const { clientName, details, doctorId, sex, age, appointmentDate, appointmentTime } = req.body;
+    const { clientName, clientEmail, clientPhone, details, sex, age, preferredDate, preferredTime } = req.body;
 
-    const doctor = await User.findById(doctorId);
-    if (!doctor || doctor.role !== "doctor") {
-      return res.status(400).json({ message: "Invalid doctor" });
+    if (!clientName || !details || !sex || !age || !preferredDate || !preferredTime) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
     const form = await Form.create({
-      clientName,
-      details,
-      sex, 
-      age, 
-      appointmentDate, 
-      appointmentTime,
       marketer: req.user._id,
-      doctor: doctorId
+      clientName,
+      clientEmail,
+      clientPhone,
+      details,
+      sex,
+      age,
+      preferredDate,
+      preferredTime,
+      status: "pending"
     });
+
+    // Notify all doctors
+    const notification = {
+      type: "form",
+      message: `📝 New form submitted by marketer`,
+      link: `/forms/${form._id}`
+    };
+
+    if (req.io) {
+      req.io.emit("notification:new", notification); // broadcast to all connected doctors
+    }
 
     res.status(201).json(form);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ submitForm error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-/**
- * Doctor sees only forms assigned to them
- */
-export const getMyForms = async (req, res) => {
-  try {
-    const forms = await Form.find({ doctor: req.user._id }).populate("marketer", "name email");
-    res.json(forms);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/**
- * Admin can view all forms
- */
-export const getAllForms = async (req, res) => {
-  try {
-    const forms = await Form.find()
-      .populate("marketer", "name email")
-      .populate("doctor", "name email");
-    res.json(forms);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/**
- * Doctor approves/rejects a form
- */
-export const decideForm = async (req, res) => {
+// Doctor fetches single form details
+export const getFormById = async (req, res) => {
   try {
     const { formId } = req.params;
-    const { decision } = req.body; // "approved" | "rejected"
+    const form = await Form.findById(formId)
+      .populate("marketer", "firstname lastname email");
 
-    if (!["approved", "rejected"].includes(decision)) {
-      return res.status(400).json({ message: "Invalid decision" });
-    }
-
-    const form = await Form.findOne({ _id: formId, doctor: req.user._id });
     if (!form) return res.status(404).json({ message: "Form not found" });
-
-    form.status = decision;
-    await form.save();
 
     res.json(form);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ getFormById error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Doctors fetch all unclaimed forms
+export const getOpenForms = async (req, res) => {
+  try {
+    const forms = await Form.find({ status: "pending" })
+      .populate("marketer", "firstname lastname email")
+      .sort({ createdAt: -1 });
+
+    res.json(forms);
+  } catch (err) {
+    console.error("❌ getOpenForms error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Doctor accepts a form
+export const acceptForm = async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const doctorId = req.user._id;
+
+    const form = await Form.findById(formId);
+    if (!form) return res.status(404).json({ message: "Form not found" });
+    if (form.status !== "pending") return res.status(400).json({ message: "Form already taken" });
+
+    form.status = "accepted";
+    form.assignedDoctor = doctorId;
+    await form.save();
+
+    // Auto-create appointment
+    const appointment = await Appointment.create({
+      doctor: doctorId,
+      marketer: form.marketer,
+      form: form._id,
+      date: form.preferredDate,
+      time: form.preferredTime
+    });
+
+    // Notify doctor
+    await Notification.create({
+      user: doctorId,
+      type: "appointment",
+      message: "✅ You accepted a form. Appointment scheduled.",
+      link: `/appointments/${appointment._id}`
+    });
+
+    const doctorSocket = getUserSocket(doctorId);
+    if (doctorSocket) req.io.to(doctorSocket).emit("notification:new", {
+      type: "appointment",
+      message: "✅ You accepted a form. Appointment scheduled.",
+      link: `/appointments/${appointment._id}`,
+      sound: true
+    });
+
+    // Notify marketer
+    await Notification.create({
+      user: form.marketer,
+      type: "appointment",
+      message: "📢 Your form was accepted by a doctor.",
+      link: `/appointments/${appointment._id}`
+    });
+
+    const marketerSocket = getUserSocket(form.marketer);
+    if (marketerSocket) req.io.to(marketerSocket).emit("notification:new", {
+      type: "appointment",
+      message: "📢 Your form was accepted by a doctor.",
+      link: `/appointments/${appointment._id}`,
+      sound: true
+    });
+
+    res.json({ message: "Form accepted and appointment created", appointment });
+  } catch (err) {
+    console.error("❌ acceptForm error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Doctor sees forms assigned to them
+export const getDoctorForms = async (req, res) => {
+  try {
+    const forms = await Form.find({ assignedDoctor: req.user._id })
+      .populate("marketer", "firstname lastname email")
+      .sort({ createdAt: -1 });
+
+    res.json(forms);
+  } catch (err) {
+    console.error("❌ getDoctorForms error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Admin sees all forms
+export const getAllForms = async (req, res) => {
+  try {
+    const forms = await Form.find()
+      .populate("marketer", "firstname lastname email")
+      .populate("assignedDoctor", "firstname lastname email")
+      .sort({ createdAt: -1 });
+
+    res.json(forms);
+  } catch (err) {
+    console.error("❌ getAllForms error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

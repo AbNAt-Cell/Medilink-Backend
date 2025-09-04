@@ -1,23 +1,44 @@
+// controllers/notificationController.js
 import Notification from "../models/Notifications.js";
+import { getUserSocket } from "../socket/socket.js";
 
-export const listNotifications = async (req, res) => {
-  const items = await Notification.find({ user: req.user._id })
+// ✅ Fetch doctor notifications
+export const getMyNotifications = async (req, res) => {
+  const notifications = await Notification.find({ user: req.user._id })
     .sort({ createdAt: -1 });
-  res.json(items);
+  res.json(notifications);
 };
 
-export const markRead = async (req, res) => {
-  const { id } = req.params;
-  const updated = await Notification.findOneAndUpdate(
-    { _id: id, user: req.user._id },
+// ✅ Mark single notification as read
+export const markAsRead = async (req, res) => {
+  const notification = await Notification.findByIdAndUpdate(
+    req.params.id,
     { read: true },
     { new: true }
   );
-  if (!updated) return res.status(404).json({ message: "Not found" });
-  res.json(updated);
+  res.json(notification);
 };
 
-export const markAllRead = async (req, res) => {
-  await Notification.updateMany({ user: req.user._id, read: false }, { read: true });
-  res.json({ message: "All notifications marked as read" });
+// ✅ Mark all as read
+export const markAllAsRead = async (req, res) => {
+  await Notification.updateMany({ user: req.user._id }, { read: true });
+  res.json({ success: true });
+};
+
+// ✅ Send notification (used internally by forms/appointments)
+export const pushNotification = async ({ userId, type, message, link, io, recurring = false }) => {
+  const notif = await Notification.create({
+    user: userId,
+    type,
+    message,
+    link,
+    recurring
+  });
+
+  const socketId = getUserSocket(userId);
+  if (socketId && io) {
+    io.to(socketId).emit("notification:new", notif); // 🔔 frontend plays sound here
+  }
+
+  return notif;
 };

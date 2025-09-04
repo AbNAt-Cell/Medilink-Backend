@@ -1,19 +1,32 @@
 import express from "express";
 import { protect, requireRole } from "../middleware/auth.js";
-import { submitForm, getMyForms, getAllForms, decideForm } from "../controllers/formController.js";
+import {
+  submitForm,
+  getFormById,
+  getOpenForms,
+  acceptForm,
+  getDoctorForms,
+  getAllForms
+} from "../controllers/formController.js";
 
 const router = express.Router();
 
-// Marketer submits form
+// Marketer submits a new form
 router.post("/", protect, requireRole("marketer"), submitForm);
 
-// Doctor sees their forms
-router.get("/mine", protect, requireRole("doctor"), getMyForms);
+// Doctor fetches single form details
+router.get("/:formId", protect, requireRole("doctor"), getFormById);
+
+// Doctors fetch all unclaimed forms
+router.get("/open/all", protect, requireRole("doctor"), getOpenForms);
+
+// Doctor accepts a form
+router.post("/:formId/accept", protect, requireRole("doctor"), acceptForm);
+
+// Doctor sees forms assigned to them
+router.get("/mine/all", protect, requireRole("doctor"), getDoctorForms);
 
 // Admin sees all forms
 router.get("/", protect, requireRole("admin"), getAllForms);
-
-// Doctor approves/rejects
-router.post("/:formId/decision", protect, requireRole("doctor"), decideForm);
 
 export default router;
