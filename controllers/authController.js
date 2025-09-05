@@ -72,3 +72,29 @@ export const searchUsers = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// Search users for messaging
+// Marketer -> see doctors
+// Doctor -> see marketers
+// Admin -> see all
+export const searchMessagingUsers = async (req, res) => {
+  try {
+    const role = req.user.role;
+
+    let filter = {};
+    if (role === "marketer") {
+      filter = { role: "doctor" };
+    } else if (role === "doctor") {
+      filter = { role: "marketer" };
+    } // admin sees all
+
+    const users = await User.find(filter).select("firstname lastname email role");
+
+    res.json(users);
+  } catch (err) {
+    console.error("❌ searchMessagingUsers error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
