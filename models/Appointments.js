@@ -7,6 +7,7 @@ const appointmentSchema = new mongoose.Schema(
     form: { type: mongoose.Schema.Types.ObjectId, ref: "Form" },
     date: Date,
     time: String,
+    description: String,
     status: {
       type: String,
       enum: ["scheduled", "completed", "cancelled"],

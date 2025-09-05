@@ -6,9 +6,9 @@ import { getUserSocket } from "../socket/socket.js";
 // Marketer submits a new form
 export const submitForm = async (req, res) => {
   try {
-    const { clientName, clientEmail, clientPhone, details, sex, age, preferredDate, preferredTime } = req.body;
+    const { clientName, clientEmail, clientPhone, description, sex, age, preferredDate, preferredTime } = req.body;
 
-    if (!clientName || !details || !sex || !age || !preferredDate || !preferredTime) {
+    if (!clientName || !description || !sex || !age || !preferredDate || !preferredTime) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -17,7 +17,7 @@ export const submitForm = async (req, res) => {
       clientName,
       clientEmail,
       clientPhone,
-      details,
+      description,
       sex,
       age,
       preferredDate,
@@ -93,7 +93,8 @@ export const acceptForm = async (req, res) => {
       marketer: form.marketer,
       form: form._id,
       date: form.preferredDate,
-      time: form.preferredTime
+      time: form.preferredTime,
+      description: form.description
     });
 
     // Notify doctor

@@ -6,7 +6,7 @@ const formSchema = new mongoose.Schema(
     clientName: String,
     clientEmail: String,
     clientPhone: String,
-    details: String,
+    description: String,
     sex: String,
     age: Number,
     preferredDate: Date,
