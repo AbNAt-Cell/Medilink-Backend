@@ -8,9 +8,9 @@ export const submitForm = async (req, res) => {
   try {
     const { clientName, clientEmail, clientPhone, description, sex, age, preferredDate, preferredTime } = req.body;
 
-    if (!clientName || !description || !sex || !age || !preferredDate || !preferredTime) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
+    // if (!clientName || !description || !sex || !age || !preferredDate || !preferredTime) {
+    //   return res.status(400).json({ message: "Missing required fields" });
+    // }
 
     const form = await Form.create({
       marketer: req.user._id,
