@@ -2,6 +2,8 @@ import { Server } from "socket.io";
 import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
 import User from "../models/userModel.js";
+import Form from "../models/Form.js";   
+import Notification from "../models/Notifications.js";  
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,7 +12,6 @@ dotenv.config();
 const onlineUsers = new Map();
 
 export default function socketSetup(httpServer) {
-  // ✅ Reuse the same allowedOrigins from .env
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(",")
     : ["http://localhost:3000", "https://f5tzn3-3000.csb.app"];
@@ -18,9 +19,7 @@ export default function socketSetup(httpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: function (origin, callback) {
-        // Allow Postman / server requests
         if (!origin) return callback(null, true);
-
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
@@ -44,7 +43,7 @@ export default function socketSetup(httpServer) {
       io.emit("user:online", { userId });
     });
 
-    // Handle sending a new message
+    // Messaging
     socket.on("message:send", async ({ conversationId, senderId, text }) => {
       try {
         const message = await Message.create({
@@ -96,7 +95,7 @@ export default function socketSetup(httpServer) {
       }
     });
 
-    // WebRTC placeholders (for voice/video)
+    // WebRTC placeholders
     socket.on("call:offer", (data) => {
       socket.broadcast.emit("call:offer", data);
     });
@@ -118,8 +117,47 @@ export default function socketSetup(httpServer) {
     });
   });
 
+  // ✅ Reminder system with persistence
+  setInterval(async () => {
+    try {
+      const pendingForms = await Form.find({ status: "pending" });
+      if (pendingForms.length > 0) {
+        const doctors = await User.find({ role: "doctor" }).select("_id");
+
+        for (let doc of doctors) {
+          // Save reminder notification in DB if not already saved
+          const existing = await Notification.findOne({
+            user: doc._id,
+            type: "reminder",
+            status: "unread"
+          });
+
+          if (!existing) {
+            await Notification.create({
+              user: doc._id,
+              type: "reminder",
+              message: `⏰ You have ${pendingForms.length} unclaimed forms waiting`,
+              status: "unread"
+            });
+          }
+
+          // Emit live reminder via socket
+          const socketId = onlineUsers.get(doc._id.toString());
+          if (socketId) {
+            io.to(socketId).emit("notification:reminder", {
+              message: "⏰ You have unclaimed forms waiting",
+              count: pendingForms.length
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("❌ Reminder error:", err);
+    }
+  }, 120000);
+
   return io;
-};
+}
 
 // --- Helpers for stats ---
 export const getUserSocket = (userId) => onlineUsers.get(userId.toString());

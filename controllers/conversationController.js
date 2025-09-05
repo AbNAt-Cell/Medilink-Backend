@@ -1,4 +1,5 @@
 import Conversation from "../models/Conversation.js";
+import User from "../models/userModel.js";
 // import Message from "../models/messages.js";
 
 
@@ -7,11 +8,17 @@ export const startConversation = async (req, res) => {
   try {
     const { recipientId } = req.body;
 
+    // Fetch recipient user
+    const recipient = await User.findById(recipientId);
+    if (!recipient) {
+      return res.status(404).json({ message: "Recipient not found" });
+    }
+
     // Ensure not same role
-    if (req.user.role === "doctor" && req.user.role === recipientId.role) {
+    if (req.user.role === "doctor" && recipient.role === "doctor") {
       return res.status(403).json({ message: "Doctors can only message marketers" });
     }
-    if (req.user.role === "marketer" && req.user.role === recipientId.role) {
+    if (req.user.role === "marketer" && recipient.role === "marketer") {
       return res.status(403).json({ message: "Marketers can only message doctors" });
     }
 
@@ -33,7 +40,7 @@ export const startConversation = async (req, res) => {
   }
 };
 
-// 🟢 Get all conversations for logged in user
+// Get all conversations for logged in user
 export const getMyConversations = async (req, res) => {
   try {
     const conversations = await Conversation.find({

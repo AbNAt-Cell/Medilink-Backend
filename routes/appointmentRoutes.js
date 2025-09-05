@@ -3,7 +3,7 @@ import { protect, requireRole } from "../middleware/auth.js";
 import {
   getDoctorAppointments,
   getMarketerAppointments,
-  decideAppointment,
+  // decideAppointment,
   getAllAppointments,
   editAppointment,
   deleteAppointment

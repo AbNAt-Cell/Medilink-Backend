@@ -1,5 +1,5 @@
 import Appointment from "../models/Appointments.js";
-import { pushNotification } from "./notificationController.js";
+import { getUserSocket } from "../socket/socket.js";
 
 // Doctor gets their appointments
 
@@ -27,32 +27,32 @@ export const getMarketerAppointments = async (req, res) => {
   }
 };
 
-// Doctor confirms/rejects appointment
+// // Doctor confirms/rejects appointment
 
-export const decideAppointment = async (req, res) => {
-  try {
-    const { appointmentId } = req.params;
-    const { decision } = req.body; // "confirmed" | "rejected"
+// export const decideAppointment = async (req, res) => {
+//   try {
+//     const { appointmentId } = req.params;
+//     const { decision } = req.body; // "confirmed" | "rejected"
 
-    if (!["confirmed", "rejected"].includes(decision)) {
-      return res.status(400).json({ message: "Invalid decision" });
-    }
+//     if (!["confirmed", "rejected"].includes(decision)) {
+//       return res.status(400).json({ message: "Invalid decision" });
+//     }
 
-    const appointment = await Appointment.findOne({
-      _id: appointmentId,
-      doctor: req.user._id
-    });
+//     const appointment = await Appointment.findOne({
+//       _id: appointmentId,
+//       doctor: req.user._id
+//     });
 
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+//     if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
-    appointment.status = decision;
-    await appointment.save();
+//     appointment.status = decision;
+//     await appointment.save();
 
-    res.json(appointment);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+//     res.json(appointment);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 
 // Admin can see all appointments
 
@@ -72,41 +72,50 @@ export const getAllAppointments = async (req, res) => {
 // Edit appointment
 export const editAppointment = async (req, res) => {
   try {
-    const appt = await Appointment.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { appointmentId } = req.params;
+    const updates = req.body;
 
-    if (!appt) return res.status(404).json({ message: "Appointment not found" });
+    const appointment = await Appointment.findByIdAndUpdate(appointmentId, updates, { new: true });
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
-    // Notify doctor
-    await pushNotification({
-      userId: appt.doctor,
-      type: "appointment",
-      message: "✏️ An appointment you are assigned to has been updated.",
-      link: `/appointments/${appt._id}`,
-      io: req.io
-    });
+    // Notify doctor + marketer
+    const users = [appointment.doctor, appointment.marketer];
+    for (let userId of users) {
+      const notif = await Notification.create({
+        user: userId,
+        type: "appointment",
+        message: "✏️ Appointment was updated.",
+        link: `/appointments/${appointment._id}`
+      });
+      const socketId = getUserSocket(userId);
+      if (socketId) req.io.to(socketId).emit("notification:new", notif);
+    }
 
-    res.json(appt);
+    res.json(appointment);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
-//  Delete appointment
+// Delete appointment
 export const deleteAppointment = async (req, res) => {
   try {
-    const appt = await Appointment.findById(req.params.id);
-    if (!appt) return res.status(404).json({ message: "Appointment not found" });
+    const { appointmentId } = req.params;
+    const appointment = await Appointment.findByIdAndDelete(appointmentId);
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
-    await Appointment.findByIdAndDelete(req.params.id);
-
-    // Notify doctor
-    await pushNotification({
-      userId: appt.doctor,
-      type: "appointment",
-      message: "❌ An appointment you were assigned to has been cancelled.",
-      link: `/appointments`,
-      io: req.io
-    });
+    // Notify doctor + marketer
+    const users = [appointment.doctor, appointment.marketer];
+    for (let userId of users) {
+      const notif = await Notification.create({
+        user: userId,
+        type: "appointment",
+        message: "❌ Appointment was cancelled.",
+        link: `/appointments`
+      });
+      const socketId = getUserSocket(userId);
+      if (socketId) req.io.to(socketId).emit("notification:new", notif);
+    }
 
     res.json({ message: "Appointment deleted" });
   } catch (err) {

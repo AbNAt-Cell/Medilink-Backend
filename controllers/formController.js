@@ -2,6 +2,8 @@ import Form from "../models/Form.js";
 import Appointment from "../models/Appointments.js"; // if you want auto-create
 import Notification from "../models/Notifications.js";
 import { getUserSocket } from "../socket/socket.js";
+import User from "../models/userModel.js";
+
 
 // Marketer submits a new form
 export const submitForm = async (req, res) => {
@@ -25,36 +27,36 @@ export const submitForm = async (req, res) => {
       status: "pending"
     });
 
-    // Notify all doctors
-    const notification = {
-      type: "form",
-      message: `📝 New form submitted by marketer`,
-      link: `/forms/${form._id}`
-    };
+    // ✅ Notify all doctors that a new form is available
+    const doctors = await User.find({ role: "doctor" }).select("_id");
+    for (let doc of doctors) {
+      const notif = await Notification.create({
+        user: doc._id,
+        type: "form",
+        message: "🆕 New form available. Click to review.",
+        link: `/forms/${form._id}`
+      });
 
-    if (req.io) {
-      req.io.emit("notification:new", notification); // broadcast to all connected doctors
+      const socketId = getUserSocket(doc._id);
+      if (socketId) {
+        req.io.to(socketId).emit("notification:new", notif);
+      }
     }
 
-    res.status(201).json(form);
+    res.status(201).json({ message: "Form submitted", form });
   } catch (err) {
-    console.error("❌ submitForm error:", err);
     res.status(500).json({ message: "Server error" });
   }
+    
 };
 
-// Doctor fetches single form details
+// Doctor views form details
 export const getFormById = async (req, res) => {
   try {
-    const { formId } = req.params;
-    const form = await Form.findById(formId)
-      .populate("marketer", "firstname lastname email");
-
+    const form = await Form.findById(req.params.formId).populate("marketer", "firstname lastname email");
     if (!form) return res.status(404).json({ message: "Form not found" });
-
     res.json(form);
   } catch (err) {
-    console.error("❌ getFormById error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -76,62 +78,50 @@ export const getOpenForms = async (req, res) => {
 // Doctor accepts a form
 export const acceptForm = async (req, res) => {
   try {
-    const { formId } = req.params;
     const doctorId = req.user._id;
+    const { formId } = req.params;
 
     const form = await Form.findById(formId);
     if (!form) return res.status(404).json({ message: "Form not found" });
-    if (form.status !== "pending") return res.status(400).json({ message: "Form already taken" });
+    if (form.status !== "pending")
+      return res.status(400).json({ message: "Form already handled" });
 
     form.status = "accepted";
     form.assignedDoctor = doctorId;
     await form.save();
 
-    // Auto-create appointment
+    // Create appointment
     const appointment = await Appointment.create({
       doctor: doctorId,
       marketer: form.marketer,
+      description: form.description,
       form: form._id,
       date: form.preferredDate,
-      time: form.preferredTime,
-      description: form.description
+      time: form.preferredTime
     });
 
-    // Notify doctor
-    await Notification.create({
+    // ✅ Notify accepting doctor
+    const doctorNotif = await Notification.create({
       user: doctorId,
       type: "appointment",
-      message: "✅ You accepted a form. Appointment scheduled.",
+      message: "✅ You accepted a form. Appointment created.",
       link: `/appointments/${appointment._id}`
     });
-
     const doctorSocket = getUserSocket(doctorId);
-    if (doctorSocket) req.io.to(doctorSocket).emit("notification:new", {
-      type: "appointment",
-      message: "✅ You accepted a form. Appointment scheduled.",
-      link: `/appointments/${appointment._id}`,
-      sound: true
-    });
+    if (doctorSocket) req.io.to(doctorSocket).emit("notification:new", doctorNotif);
 
-    // Notify marketer
-    await Notification.create({
+    // ✅ Notify marketer
+    const marketerNotif = await Notification.create({
       user: form.marketer,
       type: "appointment",
-      message: "📢 Your form was accepted by a doctor.",
+      message: "📢 A doctor accepted your form. Appointment created.",
       link: `/appointments/${appointment._id}`
     });
-
     const marketerSocket = getUserSocket(form.marketer);
-    if (marketerSocket) req.io.to(marketerSocket).emit("notification:new", {
-      type: "appointment",
-      message: "📢 Your form was accepted by a doctor.",
-      link: `/appointments/${appointment._id}`,
-      sound: true
-    });
+    if (marketerSocket) req.io.to(marketerSocket).emit("notification:new", marketerNotif);
 
-    res.json({ message: "Form accepted and appointment created", appointment });
+    res.json({ message: "Form accepted, appointment created", appointment });
   } catch (err) {
-    console.error("❌ acceptForm error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

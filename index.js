@@ -10,7 +10,7 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 import formRoutes from "./routes/formRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import socketSetup from "./socket/socket.js";
-import startReminderService from "./services/reminderService.js";
+// import startReminderService from "./services/reminderService.js";
 import cors from "cors";
 import { corsOptions } from "./cors.js";
 import dotenv from "dotenv";  
@@ -41,7 +41,7 @@ app.use("/api/notifications", notificationRoutes);
 // Setup Socket.IO with same CORS rules
 socketSetup(httpServer);
 const io = socketSetup(httpServer);
-startReminderService(io);
+// startReminderService(io);
 
 mongoose
   .connect(process.env.MONGODB_URL)
