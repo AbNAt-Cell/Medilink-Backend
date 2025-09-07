@@ -154,7 +154,7 @@ export default function socketSetup(httpServer) {
     } catch (err) {
       console.error("❌ Reminder error:", err);
     }
-  }, 120000);
+  }, 7200000);
 
   return io;
 }
