@@ -1,6 +1,33 @@
 import Appointment from "../models/Appointments.js";
 import { getUserSocket } from "../socket/socket.js";
 
+// Doctor creates an appointment manually
+export const createAppointment = async (req, res) => {
+  try {
+    const doctorId = req.user._id;
+
+    const { marketer, date, time, description } = req.body;
+
+    if (!description || !date || !time) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const appointment = await Appointment.create({
+      doctor: doctorId,
+      marketer: marketer || null,
+      date,
+      time,
+      description,
+      status: "scheduled"
+    });
+
+    res.status(201).json({ message: "Appointment created", appointment });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 // Doctor gets their appointments
 
 export const getDoctorAppointments = async (req, res) => {

@@ -6,11 +6,15 @@ import {
   // decideAppointment,
   getAllAppointments,
   editAppointment,
-  deleteAppointment
+  deleteAppointment,
+  createAppointment
 } from "../controllers/appointmentController.js";
+
 
 const router = express.Router();
 
+// Doctor creates an appointment
+router.post("/doctor", protect, requireRole("doctor"), createAppointment);
 // Doctor's appointments
 router.get("/doctor", protect, requireRole("doctor"), getDoctorAppointments);
 
