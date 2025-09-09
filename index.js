@@ -14,6 +14,8 @@ import socketSetup from "./socket/socket.js";
 import cors from "cors";
 import { corsOptions } from "./cors.js";
 import dotenv from "dotenv";  
+import peerRouter from "./routes/peerRoutes.js";
+
 
 dotenv.config();
 
@@ -35,6 +37,7 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/forms", formRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/peer", peerRouter);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 
