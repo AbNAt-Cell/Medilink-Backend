@@ -8,13 +8,13 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Keep a map of connected users { userId: { socketId, peerId? } }
+// Keep a map of connected users { userId: socketId }
 const onlineUsers = new Map();
 
 export default function socketSetup(httpServer) {
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(",")
-    : ["http://localhost:3000"];
+    : ["http://localhost:3000", "https://f5tzn3-3000.csb.app"];
 
   const io = new Server(httpServer, {
     cors: {
@@ -36,29 +36,14 @@ export default function socketSetup(httpServer) {
   io.on("connection", (socket) => {
     console.log("⚡ New client connected", socket.id);
 
-    // -----------------------------
     // User joins
-    // -----------------------------
     socket.on("join", (userId) => {
-      const existing = onlineUsers.get(userId) || {};
-      onlineUsers.set(userId, { ...existing, socketId: socket.id });
-      io.emit("user:online", { userId });
+      onlineUsers.set(userId, socket.id);
       console.log(`✅ User ${userId} connected`);
+      io.emit("user:online", { userId });
     });
 
-    // -----------------------------
-    // Peer ID registration for audio/video
-    // -----------------------------
-    socket.on("peer:id", ({ userId, peerId }) => {
-      const existing = onlineUsers.get(userId) || {};
-      onlineUsers.set(userId, { ...existing, peerId });
-      io.emit("peer:available", { userId, peerId });
-      console.log(`✅ User ${userId} registered with Peer ID: ${peerId}`);
-    });
-
-    // -----------------------------
     // Messaging
-    // -----------------------------
     socket.on("message:send", async ({ conversationId, senderId, text }) => {
       try {
         const message = await Message.create({
@@ -77,9 +62,9 @@ export default function socketSetup(httpServer) {
 
         const conv = await Conversation.findById(conversationId).lean();
         conv.participants.forEach((participantId) => {
-          const user = onlineUsers.get(participantId.toString());
-          if (user?.socketId) {
-            io.to(user.socketId).emit("message:new", populated);
+          const socketId = onlineUsers.get(participantId.toString());
+          if (socketId) {
+            io.to(socketId).emit("message:new", populated);
           }
         });
       } catch (err) {
@@ -87,6 +72,7 @@ export default function socketSetup(httpServer) {
       }
     });
 
+    // Mark conversation as read
     socket.on("message:read", async ({ conversationId, userId }) => {
       try {
         await Message.updateMany(
@@ -96,9 +82,9 @@ export default function socketSetup(httpServer) {
 
         const conv = await Conversation.findById(conversationId).lean();
         conv.participants.forEach((participantId) => {
-          const user = onlineUsers.get(participantId.toString());
-          if (user?.socketId) {
-            io.to(user.socketId).emit("message:read:update", {
+          const socketId = onlineUsers.get(participantId.toString());
+          if (socketId) {
+            io.to(socketId).emit("message:read:update", {
               conversationId,
               userId
             });
@@ -109,9 +95,7 @@ export default function socketSetup(httpServer) {
       }
     });
 
-    // -----------------------------
-    // WebRTC placeholders (optional)
-    // -----------------------------
+    // WebRTC placeholders
     socket.on("call:offer", (data) => {
       socket.broadcast.emit("call:offer", data);
     });
@@ -120,23 +104,20 @@ export default function socketSetup(httpServer) {
       socket.broadcast.emit("call:answer", data);
     });
 
-    // -----------------------------
     // Disconnect
-    // -----------------------------
     socket.on("disconnect", () => {
-      for (let [userId, user] of onlineUsers.entries()) {
-        if (user.socketId === socket.id) {
+      console.log("🔌 Client disconnected", socket.id);
+      for (let [userId, sockId] of onlineUsers.entries()) {
+        if (sockId === socket.id) {
           onlineUsers.delete(userId);
-          io.emit("user:offline", { userId });
           console.log(`❌ User ${userId} disconnected`);
+          io.emit("user:offline", { userId });
         }
       }
     });
   });
 
-  // -----------------------------
-  // Reminder system
-  // -----------------------------
+  // ✅ Reminder system with persistence
   setInterval(async () => {
     try {
       const pendingForms = await Form.find({ status: "pending" });
@@ -144,6 +125,7 @@ export default function socketSetup(httpServer) {
         const doctors = await User.find({ role: "doctor" }).select("_id");
 
         for (let doc of doctors) {
+          // Save reminder notification in DB if not already saved
           const existing = await Notification.findOne({
             user: doc._id,
             type: "reminder",
@@ -159,9 +141,10 @@ export default function socketSetup(httpServer) {
             });
           }
 
-          const user = onlineUsers.get(doc._id.toString());
-          if (user?.socketId) {
-            io.to(user.socketId).emit("notification:reminder", {
+          // Emit live reminder via socket
+          const socketId = onlineUsers.get(doc._id.toString());
+          if (socketId) {
+            io.to(socketId).emit("notification:reminder", {
               message: "⏰ You have unclaimed forms waiting",
               count: pendingForms.length
             });
@@ -177,11 +160,13 @@ export default function socketSetup(httpServer) {
 }
 
 // --- Helpers for stats ---
-export const getUserSocket = (userId) => onlineUsers.get(userId)?.socketId;
+export const getUserSocket = (userId) => onlineUsers.get(userId.toString());
+
 export const getOnlineDoctors = async () => {
   const doctorIds = Array.from(onlineUsers.keys());
-  const doctors = await User.find({ _id: { $in: doctorIds }, role: "doctor" }).select("_id");
+  const doctors = await User.find({
+    _id: { $in: doctorIds },
+    role: "doctor"
+  }).select("_id");
   return doctors.map((d) => d._id.toString());
 };
-
-export { onlineUsers };
