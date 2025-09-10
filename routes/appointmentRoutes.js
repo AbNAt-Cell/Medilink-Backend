@@ -7,7 +7,8 @@ import {
   getAllAppointments,
   editAppointment,
   deleteAppointment,
-  createAppointment
+  createAppointment,
+  getAppointmentDetails
 } from "../controllers/appointmentController.js";
 
 
@@ -20,6 +21,8 @@ router.get("/doctor", protect, requireRole("doctor"), getDoctorAppointments);
 
 // Marketer's appointments
 router.get("/marketer", protect, requireRole("marketer"), getMarketerAppointments);
+
+router.get("/:appointmentId", protect, getAppointmentDetails);
 
 // Doctor decides
 // router.post("/:appointmentId/decision", protect, requireRole("doctor"), decideAppointment);
