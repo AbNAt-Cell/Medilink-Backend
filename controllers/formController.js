@@ -1,14 +1,23 @@
 import Form from "../models/Form.js";
-import Appointment from "../models/Appointments.js"; // if you want auto-create
+import Appointment from "../models/Appointments.js";
 import Notification from "../models/Notifications.js";
 import { getUserSocket } from "../socket/socket.js";
 import User from "../models/userModel.js";
-
+import { formatDate } from "../services/formatDate.js";
 
 // Marketer submits a new form
 export const submitForm = async (req, res) => {
   try {
-    const { clientName, clientEmail, clientPhone, description, sex, age, preferredDate, preferredTime } = req.body;
+    const {
+      clientName,
+      clientEmail,
+      clientPhone,
+      description,
+      sex,
+      age,
+      preferredDate,
+      preferredTime
+    } = req.body;
 
     if (!clientName || !description || !sex || !age || !preferredDate || !preferredTime) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -27,7 +36,7 @@ export const submitForm = async (req, res) => {
       status: "pending"
     });
 
-    // ✅ Notify all doctors that a new form is available
+    // Notify doctors
     const doctors = await User.find({ role: "doctor" }).select("_id");
     for (let doc of doctors) {
       const notif = await Notification.create({
@@ -43,18 +52,25 @@ export const submitForm = async (req, res) => {
       }
     }
 
-    res.status(201).json({ message: "Form submitted", form });
+    let responseForm = form.toObject();
+    responseForm.preferredDate = formatDate(responseForm.preferredDate);
+
+    res.status(201).json({ message: "Form submitted", form: responseForm });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
-    
 };
 
 // Doctor views form details
 export const getFormById = async (req, res) => {
   try {
-    const form = await Form.findById(req.params.formId).populate("marketer", "firstname lastname email");
+    const form = await Form.findById(req.params.formId)
+      .populate("marketer", "firstname lastname email")
+      .lean();
+
     if (!form) return res.status(404).json({ message: "Form not found" });
+
+    form.preferredDate = formatDate(form.preferredDate);
     res.json(form);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -66,9 +82,15 @@ export const getOpenForms = async (req, res) => {
   try {
     const forms = await Form.find({ status: "pending" })
       .populate("marketer", "firstname lastname email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json(forms);
+    const formatted = forms.map((f) => ({
+      ...f,
+      preferredDate: formatDate(f.preferredDate)
+    }));
+
+    res.json(formatted);
   } catch (err) {
     console.error("❌ getOpenForms error:", err);
     res.status(500).json({ message: "Server error" });
@@ -83,8 +105,9 @@ export const acceptForm = async (req, res) => {
 
     const form = await Form.findById(formId);
     if (!form) return res.status(404).json({ message: "Form not found" });
-    if (form.status !== "pending")
+    if (form.status !== "pending") {
       return res.status(400).json({ message: "Form already handled" });
+    }
 
     form.status = "accepted";
     form.assignedDoctor = doctorId;
@@ -101,7 +124,7 @@ export const acceptForm = async (req, res) => {
       status: "scheduled"
     });
 
-    // ✅ Notify accepting doctor
+    // Notify doctor
     const doctorNotif = await Notification.create({
       user: doctorId,
       type: "appointment",
@@ -111,7 +134,7 @@ export const acceptForm = async (req, res) => {
     const doctorSocket = getUserSocket(doctorId);
     if (doctorSocket) req.io.to(doctorSocket).emit("notification:new", doctorNotif);
 
-    // ✅ Notify marketer
+    // Notify marketer
     const marketerNotif = await Notification.create({
       user: form.marketer,
       type: "appointment",
@@ -121,7 +144,10 @@ export const acceptForm = async (req, res) => {
     const marketerSocket = getUserSocket(form.marketer);
     if (marketerSocket) req.io.to(marketerSocket).emit("notification:new", marketerNotif);
 
-    res.json({ message: "Form accepted, appointment created", appointment });
+    let responseAppointment = appointment.toObject();
+    responseAppointment.date = formatDate(responseAppointment.date);
+
+    res.json({ message: "Form accepted, appointment created", appointment: responseAppointment });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -132,9 +158,15 @@ export const getDoctorForms = async (req, res) => {
   try {
     const forms = await Form.find({ assignedDoctor: req.user._id })
       .populate("marketer", "firstname lastname email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json(forms);
+    const formatted = forms.map((f) => ({
+      ...f,
+      preferredDate: formatDate(f.preferredDate)
+    }));
+
+    res.json(formatted);
   } catch (err) {
     console.error("❌ getDoctorForms error:", err);
     res.status(500).json({ message: "Server error" });
@@ -147,9 +179,15 @@ export const getAllForms = async (req, res) => {
     const forms = await Form.find()
       .populate("marketer", "firstname lastname email")
       .populate("assignedDoctor", "firstname lastname email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json(forms);
+    const formatted = forms.map((f) => ({
+      ...f,
+      preferredDate: formatDate(f.preferredDate)
+    }));
+
+    res.json(formatted);
   } catch (err) {
     console.error("❌ getAllForms error:", err);
     res.status(500).json({ message: "Server error" });

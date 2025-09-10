@@ -1,30 +1,22 @@
 import Appointment from "../models/Appointments.js";
 import { getUserSocket } from "../socket/socket.js";
+import Notification from "../models/Notifications.js";
 import Form from "../models/Form.js";
+import { formatDate } from "../services/formatDate.js";
 
+// Doctor creates an appointment manually
 export const createAppointment = async (req, res) => {
   try {
     const doctorId = req.user._id;
+    const { clientName, clientEmail, clientPhone, details, sex, age, date, time } = req.body;
 
-    const {
-      clientName,
-      clientEmail,
-      clientPhone,
-      details,
-      sex,
-      age,
-      date,
-      time
-    } = req.body;
-
-    // Validate required fields
     if (!clientName || !details || !sex || !age || !date || !time) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // ✅ Step 1: Create a Form (as though marketer submitted it)
+    // Step 1: Create a Form
     const form = await Form.create({
-      marketer: null, // since no marketer, it's doctor-submitted
+      marketer: null, // doctor-submitted
       clientName,
       clientEmail,
       clientPhone,
@@ -33,11 +25,11 @@ export const createAppointment = async (req, res) => {
       age,
       preferredDate: date,
       preferredTime: time,
-      status: "accepted", // doctor is already accepting it
+      status: "accepted",
       assignedDoctor: doctorId
     });
 
-    // ✅ Step 2: Create Appointment linked to form
+    // Step 2: Create Appointment
     const appointment = await Appointment.create({
       doctor: doctorId,
       marketer: null,
@@ -48,7 +40,7 @@ export const createAppointment = async (req, res) => {
       status: "scheduled"
     });
 
-    // ✅ Step 3: Create a notification for the doctor (for confirmation UX)
+    // Step 3: Notify Doctor
     await Notification.create({
       user: doctorId,
       type: "appointment",
@@ -56,7 +48,6 @@ export const createAppointment = async (req, res) => {
       link: `/appointments/${appointment._id}`
     });
 
-    // Optionally push via Socket.IO
     const doctorSocket = getUserSocket(doctorId);
     if (doctorSocket && req.io) {
       req.io.to(doctorSocket).emit("notification:new", {
@@ -65,10 +56,16 @@ export const createAppointment = async (req, res) => {
       });
     }
 
+    let responseAppointment = appointment.toObject();
+    responseAppointment.date = formatDate(responseAppointment.date);
+
+    let responseForm = form.toObject();
+    responseForm.preferredDate = formatDate(responseForm.preferredDate);
+
     res.status(201).json({
       message: "Appointment created and synced with form",
-      appointment,
-      form
+      appointment: responseAppointment,
+      form: responseForm
     });
   } catch (err) {
     console.error("❌ Create appointment error:", err);
@@ -76,69 +73,59 @@ export const createAppointment = async (req, res) => {
   }
 };
 
-
 // Doctor gets their appointments
-
 export const getDoctorAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ doctor: req.user._id })
       .populate("form")
-      .populate("marketer", "name email");
-    res.json(appointments);
+      .populate("marketer", "name email")
+      .lean();
+
+    const formatted = appointments.map((a) => ({
+      ...a,
+      date: formatDate(a.date)
+    }));
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
 // Marketer gets their appointments
-
 export const getMarketerAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ marketer: req.user._id })
       .populate("form")
-      .populate("doctor", "name email");
-    res.json(appointments);
+      .populate("doctor", "name email")
+      .lean();
+
+    const formatted = appointments.map((a) => ({
+      ...a,
+      date: formatDate(a.date)
+    }));
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// // Doctor confirms/rejects appointment
-
-// export const decideAppointment = async (req, res) => {
-//   try {
-//     const { appointmentId } = req.params;
-//     const { decision } = req.body; // "confirmed" | "rejected"
-
-//     if (!["confirmed", "rejected"].includes(decision)) {
-//       return res.status(400).json({ message: "Invalid decision" });
-//     }
-
-//     const appointment = await Appointment.findOne({
-//       _id: appointmentId,
-//       doctor: req.user._id
-//     });
-
-//     if (!appointment) return res.status(404).json({ message: "Appointment not found" });
-
-//     appointment.status = decision;
-//     await appointment.save();
-
-//     res.json(appointment);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
 // Admin can see all appointments
-
 export const getAllAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find()
       .populate("form")
       .populate("marketer", "name email")
-      .populate("doctor", "name email");
-    res.json(appointments);
+      .populate("doctor", "name email")
+      .lean();
+
+    const formatted = appointments.map((a) => ({
+      ...a,
+      date: formatDate(a.date)
+    }));
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -152,10 +139,16 @@ export const getAppointmentDetails = async (req, res) => {
     const appointment = await Appointment.findById(appointmentId)
       .populate("doctor", "firstname lastname email role")
       .populate("marketer", "firstname lastname email role")
-      .populate("form"); // include form details
+      .populate("form")
+      .lean();
 
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    appointment.date = formatDate(appointment.date);
+    if (appointment.form?.preferredDate) {
+      appointment.form.preferredDate = formatDate(appointment.form.preferredDate);
     }
 
     res.json(appointment);
@@ -165,19 +158,21 @@ export const getAppointmentDetails = async (req, res) => {
   }
 };
 
-
 // Edit appointment
 export const editAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const updates = req.body;
 
-    const appointment = await Appointment.findByIdAndUpdate(appointmentId, updates, { new: true });
+    const appointment = await Appointment.findByIdAndUpdate(appointmentId, updates, { new: true }).lean();
     if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+    appointment.date = formatDate(appointment.date);
 
     // Notify doctor + marketer
     const users = [appointment.doctor, appointment.marketer];
     for (let userId of users) {
+      if (!userId) continue;
       const notif = await Notification.create({
         user: userId,
         type: "appointment",
@@ -204,6 +199,7 @@ export const deleteAppointment = async (req, res) => {
     // Notify doctor + marketer
     const users = [appointment.doctor, appointment.marketer];
     for (let userId of users) {
+      if (!userId) continue;
       const notif = await Notification.create({
         user: userId,
         type: "appointment",
