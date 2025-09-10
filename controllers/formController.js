@@ -97,7 +97,8 @@ export const acceptForm = async (req, res) => {
       description: form.description,
       form: form._id,
       date: form.preferredDate,
-      time: form.preferredTime
+      time: form.preferredTime,
+      status: "scheduled"
     });
 
     // ✅ Notify accepting doctor

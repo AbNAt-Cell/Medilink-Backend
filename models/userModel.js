@@ -1,3 +1,4 @@
+// models/userModel.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -14,10 +15,11 @@ const userSchema = new mongoose.Schema({
   address: String,
   bio: String,
   specialization: String, // for doctors
-  role: { type: String, enum: ["admin", "doctor", "marketer"], default: "doctor" }
+  role: { type: String, enum: ["admin", "doctor", "marketer"], default: "doctor" },
+  peerId: { type: String } // ✅ Added for WebRTC peer connections
 }, { timestamps: true });
 
-// Hash password before saving
+// Password hash middleware
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
