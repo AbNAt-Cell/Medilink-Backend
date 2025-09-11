@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 const appointmentSchema = new mongoose.Schema(
   {
-    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    
+    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }, // Doctor can be null until one accepts
   marketer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     form: { type: mongoose.Schema.Types.ObjectId, ref: "Form" },
     date: Date,
@@ -10,8 +11,8 @@ const appointmentSchema = new mongoose.Schema(
     description: String,
     status: {
       type: String,
-      enum: ["scheduled", "completed", "cancelled"],
-      default: "scheduled"
+      enum: ["pending", "scheduled", "completed", "cancelled"],
+      default: "pending"
     },
     doctorComment: String,       
     doctorSignatureUrl: String  
