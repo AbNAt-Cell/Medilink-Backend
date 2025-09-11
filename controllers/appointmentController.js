@@ -158,6 +158,53 @@ export const getAppointmentDetails = async (req, res) => {
   }
 };
 
+// ✅ Doctor updates appointment with comment + signature
+export const submitAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { doctorComment, doctorSignatureUrl } = req.body;
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // Only the assigned doctor can submit
+    if (appointment.doctor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Update fields
+    appointment.doctorComment = doctorComment;
+    appointment.doctorSignatureUrl = doctorSignatureUrl || req.user.signatureUrl; // fallback to stored signature
+    appointment.status = "submitted";
+
+    await appointment.save();
+
+    // Notify marketer + admin
+    await Notification.create({
+      user: appointment.marketer,
+      type: "appointment",
+      message: "📋 Appointment has been submitted by the doctor.",
+      link: `/appointments/${appointment._id}`
+    });
+
+    // Socket push
+    const marketerSocket = getUserSocket(appointment.marketer);
+    if (marketerSocket) {
+      req.io.to(marketerSocket).emit("notification:new", {
+        message: "📋 Appointment submitted by doctor",
+        appointment
+      });
+    }
+
+    res.json({ message: "Appointment submitted successfully", appointment });
+  } catch (err) {
+    console.error("❌ Submit appointment error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // Edit appointment
 export const editAppointment = async (req, res) => {
   try {

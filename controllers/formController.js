@@ -5,7 +5,7 @@ import { getUserSocket } from "../socket/socket.js";
 import User from "../models/userModel.js";
 import { formatDate } from "../services/formatDate.js";
 
-// Marketer submits a new form
+// ✅ Marketer submits a new form (creates Form + pending Appointment)
 export const submitForm = async (req, res) => {
   try {
     const {
@@ -23,6 +23,7 @@ export const submitForm = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // 1️⃣ Create Form
     const form = await Form.create({
       marketer: req.user._id,
       clientName,
@@ -36,30 +37,47 @@ export const submitForm = async (req, res) => {
       status: "pending"
     });
 
-    // Notify doctors
+    // 2️⃣ Create matching pending Appointment (doctor not yet assigned)
+    let appointment = await Appointment.create({
+      form: form._id,
+      marketer: req.user._id,
+      doctor: null,
+      date: preferredDate,
+      time: preferredTime,
+      description,
+      status: "pending"
+    });
+
+    // 👉 populate form inside appointment for immediate return
+    appointment = await appointment.populate("form");
+
+    // 3️⃣ Notify all doctors
     const doctors = await User.find({ role: "doctor" }).select("_id");
-    for (let doc of doctors) {
+    for (const doc of doctors) {
       const notif = await Notification.create({
         user: doc._id,
         type: "form",
-        message: "🆕 New form available. Click to review.",
+        message: "🆕 New form/appointment available. Click to review.",
         link: `/forms/${form._id}`
       });
-
       const socketId = getUserSocket(doc._id);
-      if (socketId) {
-        req.io.to(socketId).emit("notification:new", notif);
-      }
+      if (socketId && req.io) req.io.to(socketId).emit("notification:new", notif);
     }
 
     let responseForm = form.toObject();
     responseForm.preferredDate = formatDate(responseForm.preferredDate);
 
-    res.status(201).json({ message: "Form submitted", form: responseForm });
+    res.status(201).json({
+      message: "Form submitted & pending appointment created",
+      form,
+      appointment        // ✅ appointment already includes form details
+    });
   } catch (err) {
+    console.error("❌ submitForm error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Doctor views form details
 export const getFormById = async (req, res) => {

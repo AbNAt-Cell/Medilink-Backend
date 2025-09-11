@@ -11,6 +11,7 @@ import formRoutes from "./routes/formRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import socketSetup from "./socket/socket.js";
 import callRoutes from "./routes/callRoutes.js";
+import signatureRoutes from "./routes/signatureRoutes.js";
 
 // import startReminderService from "./services/reminderService.js";
 import cors from "cors";
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors(corsOptions));
 
+
 // Health check
 app.get("/health", (req, res) => res.status(200).json({ message: "ok" }));
 
@@ -40,6 +42,8 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/call", callRoutes);
+app.use("/api/signature", signatureRoutes);
+
 
 // Setup Socket.IO with same CORS rules
 socketSetup(httpServer);

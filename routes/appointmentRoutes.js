@@ -8,7 +8,8 @@ import {
   editAppointment,
   deleteAppointment,
   createAppointment,
-  getAppointmentDetails
+  getAppointmentDetails,
+  submitAppointment
 } from "../controllers/appointmentController.js";
 
 
@@ -24,8 +25,8 @@ router.get("/marketer", protect, requireRole("marketer"), getMarketerAppointment
 
 router.get("/:appointmentId", protect, getAppointmentDetails);
 
-// Doctor decides
-// router.post("/:appointmentId/decision", protect, requireRole("doctor"), decideAppointment);
+//  Doctor submits appointment with comment + signature
+router.patch("/:appointmentId/submit", protect, requireRole("doctor"), submitAppointment);
 
 // Admin sees all
 router.get("/", protect, requireRole("admin"), getAllAppointments);

@@ -12,7 +12,9 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       enum: ["scheduled", "completed", "cancelled"],
       default: "scheduled"
-    }
+    },
+    doctorComment: String,       
+    doctorSignatureUrl: String  
   },
   { timestamps: true }
 );

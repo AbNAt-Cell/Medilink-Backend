@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
   country: String,
   password: { type: String, required: true },
   avatarUrl: String,
-  signatureUrl: String,
+  signatureUrl: { type: String, default: null },
   address: String,
   bio: String,
   specialization: String, // for doctors
