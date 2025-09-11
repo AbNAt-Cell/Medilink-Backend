@@ -19,9 +19,9 @@ export const submitForm = async (req, res) => {
       preferredTime
     } = req.body;
 
-    if (!clientName || !description || !sex || !age || !preferredDate || !preferredTime) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
+    // if (!clientName || !description || !sex || !age || !preferredDate || !preferredTime) {
+    //   return res.status(400).json({ message: "Missing required fields" });
+    // }
 
     // 1️⃣ Create Form
     const form = await Form.create({
