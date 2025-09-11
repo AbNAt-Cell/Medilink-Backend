@@ -49,7 +49,9 @@ export const submitForm = async (req, res) => {
     });
 
     // 👉 populate form inside appointment for immediate return
-    appointment = await appointment.populate("form");
+    appointment = await Appointment.findById(appointment._id)
+      .populate("form")                         // include full form details
+      .populate("marketer", "firstname lastname email");
 
     // 3️⃣ Notify all doctors
     const doctors = await User.find({ role: "doctor" }).select("_id");
@@ -61,16 +63,21 @@ export const submitForm = async (req, res) => {
         link: `/forms/${form._id}`
       });
       const socketId = getUserSocket(doc._id);
-      if (socketId && req.io) req.io.to(socketId).emit("notification:new", notif);
+      if (socketId && req.io) {
+        req.io.to(socketId).emit("notification:new", notif);
+      }
     }
 
-    let responseForm = form.toObject();
-    responseForm.preferredDate = formatDate(responseForm.preferredDate);
+    // Format date for response
+    const responseForm = {
+      ...form.toObject(),
+      preferredDate: formatDate(form.preferredDate)
+    };
 
     res.status(201).json({
       message: "Form submitted & pending appointment created",
-      form,
-      appointment        // ✅ appointment already includes form details
+      form: responseForm,
+      appointment          // ✅ appointment now includes full form details
     });
   } catch (err) {
     console.error("❌ submitForm error:", err);

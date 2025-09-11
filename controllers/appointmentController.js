@@ -76,7 +76,12 @@ export const createAppointment = async (req, res) => {
 // Doctor gets their appointments
 export const getDoctorAppointments = async (req, res) => {
   try {
-    const appointments = await Appointment.find({ doctor: req.user._id })
+    const appointments = await Appointment.find({
+      $or: [
+        { doctor: req.user._id },
+        { doctor: null }  // ✅ include pending
+      ]
+    })
       .populate("form")
       .populate("marketer", "name email")
       .lean();
@@ -91,6 +96,7 @@ export const getDoctorAppointments = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // Marketer gets their appointments
 export const getMarketerAppointments = async (req, res) => {
