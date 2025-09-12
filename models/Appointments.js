@@ -14,7 +14,7 @@ const appointmentSchema = new mongoose.Schema(
       enum: ["pending", "scheduled", "completed", "cancelled"],
       default: "pending"
     },
-    doctorComment: String,       
+    assessment: String,       
     doctorSignatureUrl: String  
   },
   { timestamps: true }

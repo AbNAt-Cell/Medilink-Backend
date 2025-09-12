@@ -168,7 +168,7 @@ export const getAppointmentDetails = async (req, res) => {
 export const submitAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.params;
-    const { doctorComment, doctorSignatureUrl } = req.body;
+    const { assessment, doctorSignatureUrl } = req.body;
 
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
@@ -181,7 +181,7 @@ export const submitAppointment = async (req, res) => {
     }
 
     // Update fields
-    appointment.doctorComment = doctorComment;
+    appointment.assessment = doctorComment;
     appointment.doctorSignatureUrl = doctorSignatureUrl || req.user.signatureUrl; // fallback to stored signature
     appointment.status = "submitted";
 
