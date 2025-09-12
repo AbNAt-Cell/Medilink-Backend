@@ -181,7 +181,7 @@ export const submitAppointment = async (req, res) => {
     }
 
     // Update fields
-    appointment.assessment = doctorComment;
+    appointment.assessment = assessment;
     appointment.doctorSignatureUrl = doctorSignatureUrl || req.user.signatureUrl; // fallback to stored signature
     appointment.status = "submitted";
 
