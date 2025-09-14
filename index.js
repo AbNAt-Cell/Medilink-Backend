@@ -12,6 +12,8 @@ import statsRoutes from "./routes/statsRoutes.js";
 import socketSetup from "./socket/socket.js";
 import callRoutes from "./routes/callRoutes.js";
 import signatureRoutes from "./routes/signatureRoutes.js";
+import clinicRoutes from "./routes/clinicRoutes.js";
+
 
 // import startReminderService from "./services/reminderService.js";
 import cors from "cors";
@@ -43,6 +45,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/call", callRoutes);
 app.use("/api/signature", signatureRoutes);
+app.use("/api/clinics", clinicRoutes);
 
 
 // Setup Socket.IO with same CORS rules

@@ -47,6 +47,33 @@ export const me = async (req, res) => {
   res.json(req.user);
 };
 
+
+export const editProfile = async (req, res) => {
+  try {
+    const allowed = ["firstname","lastname","phone","dateofBirth","avatarUrl","country","bio"];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      updates,
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "Profile updated successfully", user: updatedUser });
+  } catch (err) {
+    console.error("❌ editProfile error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
 // Search users by name, email, or phone
 export const searchUsers = async (req, res) => {
   try {
