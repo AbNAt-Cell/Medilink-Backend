@@ -5,23 +5,39 @@ export const listUsers = async (req, res) => {
   res.json(users);
 };
 
+// controllers/authController.js (excerpt)
 export const createUser = async (req, res) => {
-  if (!req.body) return res.status(400).json({ message: "Missing request body" });
-  const { lastname, firstname, dateofBirth, phone, email, password, role } = req.body;
-  const exists = await User.findOne({ email });
-  if (exists) return res.status(409).json({ message: "Email already exists" });
+  try {
+    const {
+      firstname, lastname, phone, dateofBirth,
+      email, password, role, clinic // ✅ clinic id from frontend dropdown
+    } = req.body;
 
-  const user = await User.create({ lastname, firstname, dateofBirth, phone, email, password, role });
-  res.status(201).json({
-    id: user._id,
-    lastname: user.lastname,
-    firstname: user.firstname,
-    email: user.email,
-    role: user.role,
-    dateofBirth: user.dateofBirth,
-    phone: user.phone,
-    
-  });
+    if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
+      return res.status(400).json({ message: "Kindly input all required fields" });
+    }
+
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "User already exists" });
+
+    const user = await User.create({
+      firstname,
+      lastname,
+      phone,
+      dateofBirth,
+      email,
+      password,
+      role,
+      clinic: clinic || null      // ✅ store clinic reference
+    });
+
+    res.status(201).json({
+      token: generateToken(user._id, user.role),
+      user
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 export const editUser = async (req, res) => {

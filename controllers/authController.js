@@ -129,17 +129,13 @@ export const searchMessagingUsers = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-
-    // Exclude sensitive fields like password
-    const user = await User.findById(userId).select(
-      "firstname lastname email phone role avatarUrl"
-    );
-
+    const user = await User.findById(userId)
+      .select("-password")
+      .populate("clinic");   // ✅ populate clinic details
     if (!user) return res.status(404).json({ message: "User not found" });
-
     res.json(user);
   } catch (err) {
-    console.error("❌ getUserProfile error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
