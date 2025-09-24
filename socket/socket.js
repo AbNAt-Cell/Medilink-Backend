@@ -14,7 +14,7 @@ const onlineUsers = new Map();
 export default function socketSetup(httpServer) {
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(",")
-    : ["http://localhost:3000"];
+    : ["http://localhost:3000", "https://f5tzn3-3000.csb.app/"];
 
   const io = new Server(httpServer, {
     cors: {
