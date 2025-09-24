@@ -7,9 +7,7 @@ import Form from "../models/Form.js";
 // Doctor creates an appointment manually
 export const createAppointment = async (req, res) => {
   try {
-    console.log("createAppointment req.body:", req.body);
-    console.log("createAppointment req.user:", req.user);
-
+    
     const doctorId = req.user?._id;
     if (!doctorId) {
       return res.status(401).json({ message: "Unauthorized: No doctorId" });
@@ -26,11 +24,11 @@ export const createAppointment = async (req, res) => {
       time
     } = req.body;
 
-    if (!clientName || !details || !sex || !age || !date || !time) {
-      return res
-        .status(400)
-        .json({ message: "Missing required fields" });
-    }
+    // if (!clientName || !details || !sex || !age || !date || !time) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "Missing required fields" });
+    // }
 
     // ✅ Parse date string (supports dd/mm/yyyy or dd-mm-yyyy)
     let parsedDate = date;
