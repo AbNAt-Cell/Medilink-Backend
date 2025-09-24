@@ -1,77 +1,137 @@
+import { formatDate } from "../services/formatDate.js";
 import Appointment from "../models/Appointments.js";
 import { getUserSocket } from "../socket/socket.js";
 import Notification from "../models/Notifications.js";
 import Form from "../models/Form.js";
-import { formatDate } from "../services/formatDate.js";
 
 // Doctor creates an appointment manually
 export const createAppointment = async (req, res) => {
   try {
-    const doctorId = req.user._id;
-    const { clientName, clientEmail, clientPhone, details, sex, age, date, time } = req.body;
+    console.log("createAppointment req.body:", req.body);
+    console.log("createAppointment req.user:", req.user);
 
-    if (!clientName || !details || !sex || !age || !date || !time) {
-      return res.status(400).json({ message: "Missing required fields" });
+    const doctorId = req.user?._id;
+    if (!doctorId) {
+      return res.status(401).json({ message: "Unauthorized: No doctorId" });
     }
 
-    // Step 1: Create a Form
-    const form = await Form.create({
-      marketer: null, // doctor-submitted
+    const {
       clientName,
       clientEmail,
       clientPhone,
       details,
       sex,
       age,
-      preferredDate: date,
-      preferredTime: time,
-      status: "accepted",
-      assignedDoctor: doctorId
-    });
-
-    // Step 2: Create Appointment
-    const appointment = await Appointment.create({
-      doctor: doctorId,
-      marketer: null,
-      form: form._id,
       date,
-      time,
-      description: details,
-      status: "scheduled"
-    });
+      time
+    } = req.body;
 
-    // Step 3: Notify Doctor
-    await Notification.create({
-      user: doctorId,
-      type: "appointment",
-      message: "📅 You created a new appointment.",
-      link: `/appointments/${appointment._id}`
-    });
-
-    const doctorSocket = getUserSocket(doctorId);
-    if (doctorSocket && req.io) {
-      req.io.to(doctorSocket).emit("notification:new", {
-        message: "📅 You created a new appointment.",
-        appointment
-      });
+    if (!clientName || !details || !sex || !age || !date || !time) {
+      return res
+        .status(400)
+        .json({ message: "Missing required fields" });
     }
 
-    let responseAppointment = appointment.toObject();
+    // ✅ Parse date string (supports dd/mm/yyyy or dd-mm-yyyy)
+    let parsedDate = date;
+    if (typeof date === "string") {
+      const parts = date.includes("/") ? date.split("/") : date.split("-");
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        parsedDate = new Date(
+          `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+        );
+      } else {
+        return res
+          .status(400)
+          .json({ message: "Invalid date format. Use dd/mm/yyyy or dd-mm-yyyy." });
+      }
+    }
+
+    if (!(parsedDate instanceof Date) || isNaN(parsedDate)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid date format. Use dd/mm/yyyy or dd-mm-yyyy." });
+    }
+
+    // Step 1: Create Form
+    let form;
+    try {
+      form = await Form.create({
+        marketer: null,
+        clientName,
+        clientEmail,
+        clientPhone,
+        details,
+        sex,
+        age,
+        preferredDate: parsedDate, // ✅ real Date object
+        preferredTime: time,
+        status: "accepted",
+        assignedDoctor: doctorId,
+      });
+    } catch (formErr) {
+      return res
+        .status(500)
+        .json({ message: "Error creating form", error: formErr.message });
+    }
+
+    // Step 2: Create Appointment
+    let appointment;
+    try {
+      appointment = await Appointment.create({
+        doctor: doctorId,
+        marketer: null,
+        form: form._id,
+        date: parsedDate, // optional: store as Date here too
+        time,
+        description: details,
+        status: "scheduled",
+      });
+    } catch (apptErr) {
+      return res
+        .status(500)
+        .json({ message: "Error creating appointment", error: apptErr.message });
+    }
+
+    // Step 3: Notify Doctor
+    try {
+      await Notification.create({
+        user: doctorId,
+        type: "appointment",
+        message: "📅 You created a new appointment.",
+        link: `/appointments/${appointment._id}`,
+      });
+
+      const doctorSocket = getUserSocket(doctorId);
+      if (doctorSocket && req.io) {
+        req.io.to(doctorSocket).emit("notification:new", {
+          message: "📅 You created a new appointment.",
+          appointment,
+        });
+      }
+    } catch (notifErr) {
+      console.error("Notification error:", notifErr);
+    }
+
+    // Format response dates for display
+    const responseAppointment = appointment.toObject();
     responseAppointment.date = formatDate(responseAppointment.date);
 
-    let responseForm = form.toObject();
+    const responseForm = form.toObject();
     responseForm.preferredDate = formatDate(responseForm.preferredDate);
 
     res.status(201).json({
       message: "Appointment created and synced with form",
       appointment: responseAppointment,
-      form: responseForm
+      form: responseForm,
     });
   } catch (err) {
-    console.error("❌ Create appointment error:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Create appointment error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 // Doctor gets their appointments
 export const getDoctorAppointments = async (req, res) => {
