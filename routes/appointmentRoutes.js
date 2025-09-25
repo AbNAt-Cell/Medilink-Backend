@@ -9,7 +9,8 @@ import {
   deleteAppointment,
   createAppointment,
   getAppointmentDetails,
-  submitAppointment
+  submitAppointment,
+  marketerCreateCompletedAppointment
 } from "../controllers/appointmentController.js";
 
 
@@ -19,6 +20,13 @@ const router = express.Router();
 router.post("/doctor", protect, requireRole("doctor"), createAppointment);
 // Doctor's appointments
 router.get("/doctor", protect, requireRole("doctor"), getDoctorAppointments);
+
+router.post(
+  "/marketer",
+  protect,
+  requireRole("marketer"),
+  marketerCreateCompletedAppointment
+);
 
 // Marketer's appointments
 router.get("/marketer", protect, requireRole("marketer"), getMarketerAppointments);

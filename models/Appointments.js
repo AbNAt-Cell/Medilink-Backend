@@ -1,21 +1,32 @@
+// models/Appointment.js
 import mongoose from "mongoose";
+
+const clientSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: String,
+    phone: String,
+    sex: String,
+    age: Number,
+  },
+  { _id: false }
+);
 
 const appointmentSchema = new mongoose.Schema(
   {
-    
-    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }, // Doctor can be null until one accepts
-  marketer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    form: { type: mongoose.Schema.Types.ObjectId, ref: "Form" },
-    date: Date,
-    time: String,
-    description: String,
+    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    marketer: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    client: clientSchema,                            // ✅ embedded client info
+    date: { type: Date, required: true },
+    time: { type: String, required: true },
+    description: { type: String, required: true },
     status: {
       type: String,
       enum: ["pending", "scheduled", "completed", "cancelled"],
       default: "pending"
     },
-    assessment: String,       
-    doctorSignatureUrl: String  
+    assessment: String,
+    doctorSignatureUrl: String
   },
   { timestamps: true }
 );

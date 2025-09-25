@@ -109,6 +109,64 @@ export const createAppointment = async (req, res) => {
   }
 };
 
+export const marketerCreateCompletedAppointment = async (req, res) => {
+  try {
+    // marketer is the logged-in user
+    const marketerId = req.user._id;
+    const {
+      clientName,
+      clientEmail,
+      clientPhone,
+      sex,
+      age,
+      date,
+      time,
+      description,
+      doctor // optional
+    } = req.body;
+
+    if (!clientName || !date || !time || !description) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const appointment = await Appointment.create({
+      marketer: marketerId,
+      doctor: doctor || null,
+      client: {
+        name: clientName,
+        email: clientEmail,
+        phone: clientPhone,
+        sex,
+        age
+      },
+      date,
+      time,
+      description,
+      status: "completed"
+    });
+
+    // ✅ Notify doctor if one was provided
+    if (doctor) {
+      const notif = await Notification.create({
+        user: doctor,
+        type: "appointment",
+        message: `🆕 New completed appointment from marketer`,
+        link: `/appointments/${appointment._id}`
+      });
+      const socketId = getUserSocket(doctor);
+      if (socketId) req.io?.to(socketId).emit("notification:new", notif);
+    }
+
+    res.status(201).json({
+      message: "Appointment created and marked as completed",
+      appointment
+    });
+  } catch (err) {
+    console.error("❌ marketerCreateCompletedAppointment error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 // Doctor gets their appointments
 export const getDoctorAppointments = async (req, res) => {
