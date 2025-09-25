@@ -71,8 +71,8 @@ export const createUser = async (req, res) => {
 
     res.status(201).json({ token, user: safeUser });
   } catch (err) {
-    console.error("❌ createUser error:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ createUser error:", err);   // full stack
+    res.status(500).json({ message: err.message, stack: err.stack });
   }
 };
 
