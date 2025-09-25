@@ -30,27 +30,6 @@ export const createAppointment = async (req, res) => {
     //     .json({ message: "Missing required fields" });
     // }
 
-    // ✅ Parse date string (supports dd/mm/yyyy or dd-mm-yyyy)
-    let parsedDate = date;
-    if (typeof date === "string") {
-      const parts = date.includes("/") ? date.split("/") : date.split("-");
-      if (parts.length === 3) {
-        const [day, month, year] = parts;
-        parsedDate = new Date(
-          `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-        );
-      } else {
-        return res
-          .status(400)
-          .json({ message: "Invalid date format. Use dd/mm/yyyy or dd-mm-yyyy." });
-      }
-    }
-
-    if (!(parsedDate instanceof Date) || isNaN(parsedDate)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid date format. Use dd/mm/yyyy or dd-mm-yyyy." });
-    }
 
     // Step 1: Create Form
     let form;
@@ -63,7 +42,7 @@ export const createAppointment = async (req, res) => {
         details,
         sex,
         age,
-        preferredDate: parsedDate, // ✅ real Date object
+        preferredDate: date, // ✅ real Date object
         preferredTime: time,
         status: "accepted",
         assignedDoctor: doctorId,
