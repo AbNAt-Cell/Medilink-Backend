@@ -60,7 +60,7 @@ export const createAppointment = async (req, res) => {
         doctor: doctorId,
         marketer: null,
         form: form._id,
-        date, // optional: store as Date here too
+        date, 
         time,
         description: details,
         status: "scheduled",
