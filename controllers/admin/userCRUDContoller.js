@@ -1,38 +1,57 @@
 import User from "../../models/userModel.js";
 import jwt from "jsonwebtoken";
 
-const generateToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
-};
-
+const generateToken = (id, role) =>
+  jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
 export const listUsers = async (req, res) => {
   const users = await User.find().select("-password");
   res.json(users);
 };
 
-// controllers/authController.js (excerpt)
+// ✅ Admin creates a new user (doctor / marketer / admin)
 export const createUser = async (req, res) => {
   try {
-    // Accept both camelCase and lowercase field names
-    const body = req.body;
-    const firstname = body.firstname || body.firstName;
-    const lastname = body.lastname || body.lastName;
-    const phone = body.phone;
-    const dateofBirth = body.dateofBirth || body.dateOfBirth;
-    const email = body.email;
-    const password = body.password;
-    const role = body.role;
-    const clinic = body.clinic;
-    const address = body.address;
+    const b = req.body;
 
-    if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
-      return res.status(400).json({ message: "Kindly input all required fields" });
+    // Support camelCase or PascalCase from frontend
+    const firstname   = b.firstname   || b.firstName;
+    const lastname    = b.lastname    || b.lastName;
+    const phone       = b.phone       || b.phoneNumber;
+    const dateofBirth = b.dateofBirth || b.dateOfBirth;
+    const email       = b.email;
+    const password    = b.password;
+    const role        = b.role || "doctor";
+    const clinic      = b.clinic || null;
+
+    // ✅ Required nested address
+    const address = b.address;
+    if (
+      !address ||
+      !address.street ||
+      !address.city ||
+      !address.region ||
+      !address.postalCode ||
+      !address.country
+    ) {
+      return res.status(400).json({
+        message:
+          "Complete address is required: street, city, region, postalCode, country",
+      });
     }
 
+    // ✅ Basic field validation
+    if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Kindly input all required top-level fields" });
+    }
+
+    // ✅ Check for existing user
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "User already exists" });
 
+    // ✅ Create user
     const user = await User.create({
       firstname,
       lastname,
@@ -40,19 +59,23 @@ export const createUser = async (req, res) => {
       dateofBirth,
       email,
       password,
-      role: role || "doctor",
-      clinic: clinic || null,
-      address: address || undefined
+      role,
+      clinic,
+      address, // passes straight to embedded schema
     });
 
-    res.status(201).json({
-      token: generateToken(user._id, user.role),
-      user
-    });
+    // ✅ Return token + created user (sans password)
+    const token = generateToken(user._id, user.role);
+    const safeUser = user.toObject();
+    delete safeUser.password;
+
+    res.status(201).json({ token, user: safeUser });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ createUser error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 export const editUser = async (req, res) => {
   const { id } = req.params;
