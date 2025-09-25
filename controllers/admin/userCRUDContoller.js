@@ -1,4 +1,8 @@
 import User from "../../models/userModel.js";
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+};
+
 
 export const listUsers = async (req, res) => {
   const users = await User.find().select("-password");
@@ -27,7 +31,7 @@ export const createUser = async (req, res) => {
       dateofBirth,
       email,
       password,
-      role,
+      role: role || "doctor",
       clinic: clinic || null      // ✅ store clinic reference
     });
 
