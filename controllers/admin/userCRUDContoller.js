@@ -19,9 +19,9 @@ export const createUser = async (req, res) => {
       email, password, role, clinic // ✅ clinic id from frontend dropdown
     } = req.body;
 
-    if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
-      return res.status(400).json({ message: "Kindly input all required fields" });
-    }
+    // if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
+    //   return res.status(400).json({ message: "Kindly input all required fields" });
+    // }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "User already exists" });
