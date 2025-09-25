@@ -14,14 +14,21 @@ export const listUsers = async (req, res) => {
 // controllers/authController.js (excerpt)
 export const createUser = async (req, res) => {
   try {
-    const {
-      firstname, lastname, phone, dateofBirth,
-      email, password, role, clinic // ✅ clinic id from frontend dropdown
-    } = req.body;
+    // Accept both camelCase and lowercase field names
+    const body = req.body;
+    const firstname = body.firstname || body.firstName;
+    const lastname = body.lastname || body.lastName;
+    const phone = body.phone;
+    const dateofBirth = body.dateofBirth || body.dateOfBirth;
+    const email = body.email;
+    const password = body.password;
+    const role = body.role;
+    const clinic = body.clinic;
+    const address = body.address;
 
-    // if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
-    //   return res.status(400).json({ message: "Kindly input all required fields" });
-    // }
+    if (!firstname || !lastname || !phone || !dateofBirth || !email || !password) {
+      return res.status(400).json({ message: "Kindly input all required fields" });
+    }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "User already exists" });
@@ -34,7 +41,8 @@ export const createUser = async (req, res) => {
       email,
       password,
       role: role || "doctor",
-      clinic: clinic || null      // ✅ store clinic reference
+      clinic: clinic || null,
+      address: address || undefined
     });
 
     res.status(201).json({
