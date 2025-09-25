@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Admin-only
 router.get("/", protect, requireRole("admin"), listUsers);
-router.post("/", createUser);
+router.post("/", protect, createUser);
 router.put("/:id", protect, requireRole("admin"), editUser);
 router.delete("/:id", protect, requireRole("admin"), deleteUser);
 
