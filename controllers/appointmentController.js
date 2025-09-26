@@ -16,7 +16,7 @@ export const createAppointment = async (req, res) => {
       clientName,
       clientEmail,
       clientPhone,
-      details,
+      description,
       sex,
       age,
       date,
@@ -38,7 +38,7 @@ export const createAppointment = async (req, res) => {
         },
         date,
         time,
-        description: details,
+        description,
         status: "scheduled",
       });
     } catch (apptErr) {
