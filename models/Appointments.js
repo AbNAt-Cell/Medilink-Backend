@@ -15,7 +15,7 @@ const clientSchema = new mongoose.Schema(
 const appointmentSchema = new mongoose.Schema(
   {
     doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
-    marketer: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    marketer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     client: clientSchema,                            // ✅ embedded client info
     date: { type: Date, required: true },
     time: { type: String, required: true },

@@ -4,10 +4,9 @@ import { getUserSocket } from "../socket/socket.js";
 import Notification from "../models/Notifications.js";
 import Form from "../models/Form.js";
 
-// Doctor creates an appointment manually
+
 export const createAppointment = async (req, res) => {
   try {
-    
     const doctorId = req.user?._id;
     if (!doctorId) {
       return res.status(401).json({ message: "Unauthorized: No doctorId" });
@@ -24,43 +23,20 @@ export const createAppointment = async (req, res) => {
       time
     } = req.body;
 
-    // if (!clientName || !details || !sex || !age || !date || !time) {
-    //   return res
-    //     .status(400)
-    //     .json({ message: "Missing required fields" });
-    // }
-
-
-    // Step 1: Create Form
-    let form;
-    try {
-      form = await Form.create({
-        marketer: null,
-        clientName,
-        clientEmail,
-        clientPhone,
-        details,
-        sex,
-        age,
-        preferredDate: date, // ✅ real Date object
-        preferredTime: time,
-        status: "accepted",
-        assignedDoctor: doctorId,
-      });
-    } catch (formErr) {
-      return res
-        .status(500)
-        .json({ message: "Error creating form", error: formErr.message });
-    }
-
-    // Step 2: Create Appointment
+    // Step 1: Create Appointment directly (no Form)
     let appointment;
     try {
       appointment = await Appointment.create({
         doctor: doctorId,
         marketer: null,
-        form: form._id,
-        date, 
+        client: {
+          name: clientName,
+          email: clientEmail,
+          phone: clientPhone,
+          sex,
+          age
+        },
+        date,
         time,
         description: details,
         status: "scheduled",
@@ -71,7 +47,7 @@ export const createAppointment = async (req, res) => {
         .json({ message: "Error creating appointment", error: apptErr.message });
     }
 
-    // Step 3: Notify Doctor
+    // Step 2: Notify Doctor (unchanged)
     try {
       await Notification.create({
         user: doctorId,
@@ -91,23 +67,20 @@ export const createAppointment = async (req, res) => {
       console.error("Notification error:", notifErr);
     }
 
-    // Format response dates for display
+    // Step 3: Format and respond (same as before)
     const responseAppointment = appointment.toObject();
     responseAppointment.date = formatDate(responseAppointment.date);
 
-    const responseForm = form.toObject();
-    responseForm.preferredDate = formatDate(responseForm.preferredDate);
-
     res.status(201).json({
-      message: "Appointment created and synced with form",
+      message: "Appointment created successfully",
       appointment: responseAppointment,
-      form: responseForm,
     });
   } catch (err) {
     console.error("Create appointment error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 export const marketerCreateCompletedAppointment = async (req, res) => {
   try {
