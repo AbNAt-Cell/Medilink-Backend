@@ -150,7 +150,6 @@ export const getDoctorAppointments = async (req, res) => {
         { doctor: null }  // ✅ include pending
       ]
     })
-      .populate("form")
       .populate("marketer", "name email")
       .lean();
 
@@ -170,7 +169,6 @@ export const getDoctorAppointments = async (req, res) => {
 export const getMarketerAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ marketer: req.user._id })
-      .populate("form")
       .populate("doctor", "name email")
       .lean();
 
@@ -189,7 +187,6 @@ export const getMarketerAppointments = async (req, res) => {
 export const getAllAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find()
-      .populate("form")
       .populate("marketer", "name email")
       .populate("doctor", "name email")
       .lean();
@@ -213,7 +210,6 @@ export const getAppointmentDetails = async (req, res) => {
     const appointment = await Appointment.findById(appointmentId)
       .populate("doctor", "firstname lastname email role")
       .populate("marketer", "firstname lastname email role")
-      .populate("form")
       .lean();
 
     if (!appointment) {
