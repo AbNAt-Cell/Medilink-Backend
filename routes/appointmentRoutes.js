@@ -10,7 +10,8 @@ import {
   createAppointment,
   getAppointmentDetails,
   submitAppointment,
-  marketerCreateCompletedAppointment
+  marketerCreateCompletedAppointment,
+  getAppointmentsByDoctorId
 } from "../controllers/appointmentController.js";
 
 
@@ -39,6 +40,9 @@ router.get("/", protect, requireRole("admin"), getAllAppointments);
 
 // Get specific appointment details
 router.get("/:appointmentId", protect, getAppointmentDetails);
+
+// Get appointments for a specific doctor by ID
+router.get("/doctor/:doctorId", protect, getAppointmentsByDoctorId);
 
 // Update appointment (marketer only)
 router.put("/:id", protect, requireRole("marketer"), editAppointment);
