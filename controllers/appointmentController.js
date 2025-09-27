@@ -114,9 +114,7 @@ export const createAppointment = async (req, res) => {
 
 
 export const marketerCreateCompletedAppointment = async (req, res) => {
-  try {
-    console.log("🚀 Creating marketer appointment...");
-    
+  try {    
     // marketer is the logged-in user
     const marketerId = req.user._id;
     const creator = req.user.firstname + " " + req.user.lastname;

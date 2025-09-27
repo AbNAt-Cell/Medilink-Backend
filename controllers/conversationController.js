@@ -43,14 +43,9 @@ export const startConversation = async (req, res) => {
 
 // Get all conversations for logged in user
 export const getMyConversations = async (req, res) => {
-  console.log("🚀 CONVERSATION ENDPOINT CALLED!");
-  console.log("👤 User:", req.user?.firstname, req.user?.lastname, req.user?.role);
   
   try {
-    console.log("🔍 Getting conversations with online status...");
-    console.log("📊 Online users count:", onlineUsers.size);
-    console.log("👥 Online user IDs:", Array.from(onlineUsers.keys()));
-
+    
     const conversations = await Conversation.find({
       participants: req.user._id
     })

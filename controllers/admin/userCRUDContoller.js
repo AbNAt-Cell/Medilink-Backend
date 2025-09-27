@@ -67,7 +67,6 @@ export const createUser = async (req, res) => {
       firstname,
       lastname,
       dateofBirth,
-      sex,
       phone,
       email,
       password,
