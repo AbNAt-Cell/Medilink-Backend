@@ -61,6 +61,12 @@ export const createAppointment = async (req, res) => {
         time,
         description,
         status: "scheduled",
+        createdBy: {
+          user: doctorId,
+          name: `${req.user.firstname} ${req.user.lastname}`,
+          email: req.user.email,
+          role: req.user.role
+        }
       });
     } catch (apptErr) {
       return res
@@ -88,16 +94,17 @@ export const createAppointment = async (req, res) => {
       console.error("Notification error:", notifErr);
     }
 
-    // Step 3: Format and respond (same as before)
+    // Step 3: Format and respond
     const responseAppointment = await Appointment.findById(appointment._id)
-      .populate("doctor", "firstname lastname")
+      .populate("doctor", "_id firstname lastname email")
+      .populate("marketer", "_id firstname lastname email")
       .lean();
+    
     responseAppointment.date = formatDate(responseAppointment.date);
 
     res.status(201).json({
       message: "Appointment created successfully",
-      appointment: responseAppointment,
-      createdBy: `${req.user.firstname} ${req.user.lastname}`
+      appointment: responseAppointment
     });
   } catch (err) {
     console.error("Create appointment error:", err);
@@ -108,8 +115,12 @@ export const createAppointment = async (req, res) => {
 
 export const marketerCreateCompletedAppointment = async (req, res) => {
   try {
+    console.log("🚀 Creating marketer appointment...");
+    
     // marketer is the logged-in user
     const marketerId = req.user._id;
+    const creator = req.user.firstname + " " + req.user.lastname;
+  
     const {
       clientName,
       clientEmail,
@@ -119,6 +130,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       date,
       time,
       description,
+      createdby,
       doctor // optional
     } = req.body;
 
@@ -143,8 +155,10 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       }
     }
 
+    // Create appointment with very simple structure
     const appointment = await Appointment.create({
       marketer: marketerId,
+      createdby: creator,
       doctor: doctor || null,
       client: {
         name: clientName,
@@ -157,6 +171,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       time,
       description,
       status: "completed"
+    
     });
 
     // ✅ Notify doctor if one was provided
@@ -171,12 +186,15 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       if (socketId) req.io?.to(socketId).emit("notification:new", notif);
     }
 
-    // Format response date
+    // Format response date and populate
     const responseAppointment = await Appointment.findById(appointment._id)
-      .populate("marketer", "firstname lastname")
-      .populate("doctor", "firstname lastname")
+      .populate("marketer", "_id firstname lastname email")
+      .populate("doctor", "_id firstname lastname email")
       .lean();
+    
     responseAppointment.date = formatDate(responseAppointment.date);
+
+    console.log("📋 Response appointment createdBy:", responseAppointment.createdBy);
 
     res.status(201).json({
       message: "Appointment created and marked as completed",
@@ -238,7 +256,7 @@ export const getAppointmentsByDoctorId = async (req, res) => {
 export const getMarketerAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ marketer: req.user._id })
-      .populate("doctor", "name email")
+      .populate("doctor", "firstname lastname email")
       .lean();
 
     const formatted = appointments.map((a) => ({
@@ -255,16 +273,24 @@ export const getMarketerAppointments = async (req, res) => {
 // Admin can see all appointments
 export const getAllAppointments = async (req, res) => {
   try {
+    console.log("🔍 Fetching all appointments...");
+
     const appointments = await Appointment.find()
-      .populate("marketer", "name email")
-      .populate("doctor", "name email")
-      .lean();
+      .populate("marketer", "_id firstname lastname email")
+      .populate("doctor", "_id firstname lastname email");
 
-    const formatted = appointments.map((a) => ({
-      ...a,
-      date: formatDate(a.date)
-    }));
+    console.log(`📊 Found ${appointments.length} appointments`);
 
+    const formatted = appointments.map((a) => {
+      const appointment = a.toObject(); // Convert to plain object
+      
+      return {
+        ...appointment,
+        date: formatDate(appointment.date)
+      };
+    });
+
+    console.log("✅ Sending formatted appointments response");
     res.json(formatted);
   } catch (err) {
     res.status(500).json({ message: err.message });

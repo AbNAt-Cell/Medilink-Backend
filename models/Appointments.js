@@ -26,7 +26,8 @@ const appointmentSchema = new mongoose.Schema(
       default: "pending"
     },
     assessment: String,
-    doctorSignatureUrl: String
+    doctorSignatureUrl: String,
+    createdby: String,
   },
   { timestamps: true }
 );
