@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
     signatureUrl: { type: String, default: null },
     certificate: String,
     driversLicense: String,
+    status: {
+    type: String,
+    enum: ["pending", "approved", "denied", "revoked"],
+    default: "pending"
+  },
     ssn: String,
     resume: String,
     bio: String,

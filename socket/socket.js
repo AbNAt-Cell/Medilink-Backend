@@ -14,13 +14,27 @@ const onlineUsers = new Map();
 export default function socketSetup(httpServer) {
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(",")
-    : ["*"];
+    : [
+        "http://localhost:3000",
+        "https://d76kqh-3000.csb.app",
+        "https://codesandbox.io"
+      ];
 
   const io = new Server(httpServer, {
     cors: {
       origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
+        
+        // Check if origin is in allowed list or contains allowed domains
+        const isAllowed = allowedOrigins.some(allowed => 
+          origin === allowed || 
+          origin.includes('csb.app') || 
+          origin.includes('codesandbox.io') ||
+          origin.includes('localhost')
+        );
+        
+        if (isAllowed) {
           callback(null, true);
         } else {
           console.error("❌ Socket CORS blocked:", origin);
