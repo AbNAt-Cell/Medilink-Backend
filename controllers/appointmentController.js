@@ -132,7 +132,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       doctor // optional
     } = req.body;
 
-    if (!clientName || !date || !time || !description) {
+    if (!clientName || !date || !time) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
