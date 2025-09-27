@@ -120,9 +120,6 @@ export const deleteUser = async (req, res) => {
 };
 
 
-// controllers/admin/userStatusController.js
-import User from "../../models/userModel.js";
-
 export const updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
