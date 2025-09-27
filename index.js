@@ -49,8 +49,14 @@ app.use("/api/clinics", clinicRoutes);
 
 
 // Setup Socket.IO with same CORS rules
-socketSetup(httpServer);
 const io = socketSetup(httpServer);
+
+// Attach Socket.IO to requests
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // startReminderService(io);
 
 mongoose

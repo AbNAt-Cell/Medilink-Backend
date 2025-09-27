@@ -31,13 +31,14 @@ router.post(
 // Marketer's appointments
 router.get("/marketer", protect, requireRole("marketer"), getMarketerAppointments);
 
-router.get("/:appointmentId", protect, getAppointmentDetails);
-
 //  Doctor submits appointment with comment + signature
 router.patch("/:appointmentId/submit", protect, requireRole("doctor"), submitAppointment);
 
 // Admin sees all
 router.get("/", protect, requireRole("admin"), getAllAppointments);
+
+// Get specific appointment details
+router.get("/:appointmentId", protect, getAppointmentDetails);
 
 // Update appointment (marketer only)
 router.put("/:id", protect, requireRole("marketer"), editAppointment);

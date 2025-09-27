@@ -23,6 +23,28 @@ export const createAppointment = async (req, res) => {
       time
     } = req.body;
 
+    // Validation
+    if (!clientName || !description || !date || !time) {
+      return res.status(400).json({ message: "Missing required fields: clientName, description, date, time" });
+    }
+
+    // Parse date string if in dd/mm/yyyy format
+    let parsedDate = date;
+    if (typeof date === "string" && date.includes("/")) {
+      const parts = date.split("/");
+      if (parts.length === 3) {
+        let [day, month, year] = parts;
+        day = day.padStart(2, "0");
+        month = month.padStart(2, "0");
+        parsedDate = new Date(`${year}-${month}-${day}`);
+        if (isNaN(parsedDate)) {
+          return res.status(400).json({ message: "Invalid date format. Use dd/mm/yyyy." });
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid date format. Use dd/mm/yyyy." });
+      }
+    }
+
     // Step 1: Create Appointment directly (no Form)
     let appointment;
     try {
@@ -36,7 +58,7 @@ export const createAppointment = async (req, res) => {
           sex,
           age
         },
-        date,
+        date: parsedDate,
         time,
         description,
         status: "scheduled",
@@ -102,6 +124,23 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // Parse date string if in dd/mm/yyyy format
+    let parsedDate = date;
+    if (typeof date === "string" && date.includes("/")) {
+      const parts = date.split("/");
+      if (parts.length === 3) {
+        let [day, month, year] = parts;
+        day = day.padStart(2, "0");
+        month = month.padStart(2, "0");
+        parsedDate = new Date(`${year}-${month}-${day}`);
+        if (isNaN(parsedDate)) {
+          return res.status(400).json({ message: "Invalid date format. Use dd/mm/yyyy." });
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid date format. Use dd/mm/yyyy." });
+      }
+    }
+
     const appointment = await Appointment.create({
       marketer: marketerId,
       doctor: doctor || null,
@@ -112,7 +151,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
         sex,
         age
       },
-      date,
+      date: parsedDate,
       time,
       description,
       status: "completed"
@@ -130,9 +169,13 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       if (socketId) req.io?.to(socketId).emit("notification:new", notif);
     }
 
+    // Format response date
+    const responseAppointment = appointment.toObject();
+    responseAppointment.date = formatDate(responseAppointment.date);
+
     res.status(201).json({
       message: "Appointment created and marked as completed",
-      appointment
+      appointment: responseAppointment
     });
   } catch (err) {
     console.error("❌ marketerCreateCompletedAppointment error:", err);
