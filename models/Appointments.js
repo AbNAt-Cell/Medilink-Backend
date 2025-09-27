@@ -19,6 +19,7 @@ const appointmentSchema = new mongoose.Schema(
     client: clientSchema,                            // ✅ embedded client info
     date: { type: Date, required: true },
     time: { type: String, required: true },
+    createdby: { type: String },
     description: { type: String },
     status: {
       type: String,
@@ -27,7 +28,7 @@ const appointmentSchema = new mongoose.Schema(
     },
     assessment: String,
     doctorSignatureUrl: String,
-    createdby: String,
+  
   },
   { timestamps: true }
 );

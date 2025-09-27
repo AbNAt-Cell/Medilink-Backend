@@ -57,10 +57,37 @@ export const me = async (req, res) => {
 
 export const editProfile = async (req, res) => {
   try {
-    const allowed = ["firstname","lastname","phone","dateofBirth","avatarUrl","country","bio"];
+
+    // Check if request body is empty
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ message: "No update data provided" });
+    }
+
+    const allowed = ["firstname", "lastname", "phone", "dateofBirth", "avatarUrl", "country", "bio", "specialization", "address"];
     const updates = {};
+    
+    // Process allowed fields
     for (const key of allowed) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
+      if (req.body[key] !== undefined && req.body[key] !== null && req.body[key] !== "") {
+        updates[key] = req.body[key];
+      }
+    }
+
+    console.log("✅ Filtered updates:", JSON.stringify(updates, null, 2));
+
+    // Check if there are any valid updates
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    // Handle nested address updates
+    if (updates.address && typeof updates.address === 'object') {
+      // Get current user to merge address
+      const currentUser = await User.findById(req.user._id);
+      updates.address = {
+        ...currentUser.address,
+        ...updates.address
+      };
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -69,16 +96,40 @@ export const editProfile = async (req, res) => {
       { new: true, runValidators: true }
     ).select("-password");
 
-    if (!updatedUser) return res.status(404).json({ message: "User not found" });
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    res.json({ message: "Profile updated successfully", user: updatedUser });
+    console.log("🎉 Profile updated successfully for user:", updatedUser._id);
+
+    res.json({ 
+      message: "Profile updated successfully", 
+      user: updatedUser,
+      updatedFields: Object.keys(updates)
+    });
   } catch (err) {
     console.error("❌ editProfile error:", err);
-    res.status(500).json({ message: "Server error" });
+    
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors 
+      });
+    }
+
+    // Handle duplicate key errors
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `${field} already exists. Please use a different ${field}.` 
+      });
+    }
+
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
-
 
 
 // Search users by name, email, or phone

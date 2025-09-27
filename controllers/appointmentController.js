@@ -128,7 +128,6 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       date,
       time,
       description,
-      createdby,
       doctor // optional
     } = req.body;
 
