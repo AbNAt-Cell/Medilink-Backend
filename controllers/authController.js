@@ -32,6 +32,13 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // 🚫 Prevent login until admin approval
+    if (user.status !== "approved") {
+      return res
+        .status(403)
+        .json({ message: "Your account is pending admin approval." });
+    }
+
     if (!user.role) {
       return res.status(500).json({ message: "User role is missing. Please contact support." });
     }

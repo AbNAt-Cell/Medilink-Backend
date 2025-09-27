@@ -1,6 +1,6 @@
 import express from "express";
 import { protect, requireRole } from "../../middleware/auth.js";
-import { listUsers, createUser, editUser, deleteUser } from "../../controllers/admin/userCRUDContoller.js";
+import { listUsers, createUser, editUser, deleteUser, updateUserStatus } from "../../controllers/admin/userCRUDContoller.js";
 
 const router = express.Router();
 
@@ -9,5 +9,6 @@ router.get("/", protect, requireRole("admin"), listUsers);
 router.post("/", createUser);
 router.put("/:id", protect, requireRole("admin"), editUser);
 router.delete("/:id", protect, requireRole("admin"), deleteUser);
+router.put("/:userId/status", protect, requireRole("admin"), updateUserStatus);
 
 export default router;

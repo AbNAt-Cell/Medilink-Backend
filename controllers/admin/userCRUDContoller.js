@@ -118,3 +118,37 @@ export const deleteUser = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+
+// controllers/admin/userStatusController.js
+import User from "../../models/userModel.js";
+
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+
+    const allowed = ["approved", "denied", "revoked"];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({
+        message: `Invalid status. Use one of: ${allowed.join(", ")}`
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      message: `User status updated to ${status}`,
+      user
+    });
+  } catch (err) {
+    console.error("updateUserStatus error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
