@@ -19,7 +19,7 @@ const appointmentSchema = new mongoose.Schema(
     client: clientSchema,                            // ✅ embedded client info
     date: { type: Date, required: true },
     time: { type: String, required: true },
-    description: { type: String, required: true },
+    description: { type: String },
     status: {
       type: String,
       enum: ["pending", "scheduled", "completed", "cancelled"],
