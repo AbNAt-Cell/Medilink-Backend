@@ -5,22 +5,35 @@ import Conversation from "../models/Conversation.js";
 // Send message in conversation
 export const sendMessage = async (req, res) => {
   try {
-    const { conversationId, text } = req.body;
+    const { conversationId, text, url, type } = req.body;
     const userId = req.user._id;
+
+    // Validate that either text or url is provided
+    if (!text && !url) {
+      return res.status(400).json({ message: "Either text or url must be provided" });
+    }
 
     const message = await Message.create({
       conversation: conversationId,
       sender: userId,
       text,
+      url,
+      type: type || (url ? "file" : "text"),
       readBy: [userId],
     });
 
+    // Update conversation with appropriate last message
+    const lastMessage = text || (url ? `Sent ${type || "file"}` : "New message");
     await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: text,
+      lastMessage,
       updatedAt: new Date(),
     });
 
-    res.status(201).json(message);
+    // Populate sender info before returning
+    const populatedMessage = await Message.findById(message._id)
+      .populate("sender", "firstname lastname email role avatarUrl");
+
+    res.status(201).json(populatedMessage);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -34,7 +47,7 @@ export const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const messages = await Message.find({ conversation: conversationId })
-      .populate("sender", "name email role")
+      .populate("sender", "firstname lastname email role avatarUrl")
       .sort({ createdAt: 1 });
 
     res.json(messages);
