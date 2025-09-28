@@ -40,9 +40,14 @@ const userSchema = new mongoose.Schema(
 
     // ✅ Embedded address object
     address: addressSchema,
+    addressString: String,
 
     // ✅ Link to a clinic
     clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic", default: null },
+
+    // ✅ Password reset fields
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
 
     role: { type: String, enum: ["admin", "doctor", "marketer"], default: "doctor" },
     peerId: { type: String } // for WebRTC

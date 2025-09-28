@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import User from "../models/userModel.js";
 
 const generateToken = (id, role) => {
@@ -219,6 +220,97 @@ export const getUserProfile = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🔄 Request Password Reset
+export const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if user exists for security
+      return res.status(200).json({ 
+        message: "If an account with that email exists, a password reset link has been sent." 
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    // Set token and expiration (1 hour from now)
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    
+    await user.save();
+
+    console.log(`🔑 Password reset token generated for user: ${user.email}`);
+    console.log(`🔗 Reset token: ${resetToken}`); // In production, this would be sent via email
+
+    res.status(200).json({ 
+      message: "If an account with that email exists, a password reset link has been sent.",
+      // In development, include the token. Remove in production!
+      resetToken: resetToken 
+    });
+
+  } catch (err) {
+    console.error("❌ requestPasswordReset error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🔒 Reset Password
+export const resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ 
+        message: "Reset token and new password are required" 
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        message: "Password must be at least 6 characters long" 
+      });
+    }
+
+    // Find user with valid reset token that hasn't expired
+    const user = await User.findOne({
+      resetPasswordToken: resetToken,
+      resetPasswordExpires: { $gt: new Date() } // Token not expired
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        message: "Invalid or expired reset token" 
+      });
+    }
+
+    // Update password (will be hashed by pre-save middleware)
+    user.password = newPassword;
+    
+    // Clear reset token fields
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    
+    await user.save();
+
+    console.log(`✅ Password successfully reset for user: ${user.email}`);
+
+    res.status(200).json({ 
+      message: "Password has been successfully reset. You can now login with your new password." 
+    });
+
+  } catch (err) {
+    console.error("❌ resetPassword error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
