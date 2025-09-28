@@ -64,7 +64,7 @@ export const editProfile = async (req, res) => {
       return res.status(400).json({ message: "No update data provided" });
     }
 
-    const allowed = ["firstname", "lastname", "phone", "dateofBirth", "avatarUrl", "country", "bio", "specialization", "address"];
+    const allowed = ["firstname", "lastname", "phone", "dateofBirth", "avatarUrl", "country", "bio", "specialization", "address", "addressString"];
     const updates = {};
     
     // Process allowed fields
