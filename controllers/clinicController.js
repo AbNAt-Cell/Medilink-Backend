@@ -72,6 +72,12 @@ export const getClinic = async (req, res) => {
 // ✏️ Update (only owner)
 export const updateClinic = async (req, res) => {
   try {
+    // Handle address field validation - prevent casting errors
+    if (req.body.address && typeof req.body.address === 'string') {
+      console.log("⚠️ Warning: Received string value for address field, expected object. Skipping address update.");
+      delete req.body.address;
+    }
+
     const clinic = await Clinic.findOneAndUpdate(
       { _id: req.params.id, owner: req.user._id },
       req.body,
@@ -80,7 +86,25 @@ export const updateClinic = async (req, res) => {
     if (!clinic) return res.status(404).json({ message: "Clinic not found or not yours" });
     res.json({ message: "Clinic updated", clinic });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ updateClinic error:", err);
+    
+    // Handle address casting errors specifically
+    if (err.message && err.message.includes("Cast to Embedded failed")) {
+      return res.status(400).json({ 
+        message: "Invalid address format. Address must be an object with properties like street, city, country, etc.", 
+        example: {
+          address: {
+            street: "123 Main St",
+            city: "New York", 
+            region: "NY",
+            postalCode: "10001",
+            country: "USA"
+          }
+        }
+      });
+    }
+
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 

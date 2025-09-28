@@ -69,7 +69,17 @@ export const editProfile = async (req, res) => {
     // Process allowed fields
     for (const key of allowed) {
       if (req.body[key] !== undefined && req.body[key] !== null && req.body[key] !== "") {
-        updates[key] = req.body[key];
+        // Special handling for address field
+        if (key === "address") {
+          if (typeof req.body[key] === "object" && req.body[key] !== null) {
+            updates[key] = req.body[key];
+          } else if (typeof req.body[key] === "string") {
+            console.log("⚠️ Address field received as string, skipping:", req.body[key]);
+            continue; // Skip invalid address format
+          }
+        } else {
+          updates[key] = req.body[key];
+        }
       }
     }
 
@@ -110,6 +120,22 @@ export const editProfile = async (req, res) => {
   } catch (err) {
     console.error("❌ editProfile error:", err);
     
+    // Handle address casting errors specifically
+    if (err.message && err.message.includes("Cast to Embedded failed")) {
+      return res.status(400).json({ 
+        message: "Invalid address format. Address must be an object with properties like street, city, country, etc.", 
+        example: {
+          address: {
+            street: "123 Main St",
+            city: "New York", 
+            region: "NY",
+            postalCode: "10001",
+            country: "USA"
+          }
+        }
+      });
+    }
+
     // Handle validation errors
     if (err.name === 'ValidationError') {
       const errors = Object.values(err.errors).map(e => e.message);

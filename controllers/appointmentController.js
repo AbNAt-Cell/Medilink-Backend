@@ -373,6 +373,12 @@ export const editAppointment = async (req, res) => {
     const { appointmentId } = req.params;
     const updates = req.body;
 
+    // Handle client field validation - prevent casting errors
+    if (updates.client && typeof updates.client === 'string') {
+      console.log("⚠️ Warning: Received string value for client field, expected object. Skipping client update.");
+      delete updates.client;
+    }
+
     const appointment = await Appointment.findByIdAndUpdate(appointmentId, updates, { new: true }).lean();
     if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
@@ -394,7 +400,34 @@ export const editAppointment = async (req, res) => {
 
     res.json(appointment);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ editAppointment error:", err);
+    
+    // Handle client casting errors specifically
+    if (err.message && err.message.includes("Cast to Embedded failed")) {
+      return res.status(400).json({ 
+        message: "Invalid client format. Client must be an object with properties like name, email, phone, etc.", 
+        example: {
+          client: {
+            name: "John Doe",
+            email: "john@email.com",
+            phone: "+1234567890",
+            sex: "male",
+            age: 30
+          }
+        }
+      });
+    }
+
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors 
+      });
+    }
+
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
