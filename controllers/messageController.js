@@ -23,7 +23,49 @@ export const sendMessage = async (req, res) => {
     });
 
     // Update conversation with appropriate last message
-    const lastMessage = text || (url ? `Sent ${type || "file"}` : "New message");
+    let lastMessage;
+    if (text) {
+      lastMessage = text;
+    } else if (url) {
+      switch (type) {
+        case "voice":
+          lastMessage = "🎙️ Voice message";
+          break;
+        case "image":
+          lastMessage = "📷 Image";
+          break;
+        case "video":
+          lastMessage = "🎥 Video";
+          break;
+        case "audio":
+          lastMessage = "🎵 Audio";
+          break;
+        case "audioCall":
+          lastMessage = "📞 Audio call";
+          break;
+        case "videoCall":
+          lastMessage = "📹 Video call";
+          break;
+        case "file":
+          lastMessage = "📎 File";
+          break;
+        default:
+          lastMessage = "📎 Attachment";
+      }
+    } else {
+      // Handle call messages without URL (for call notifications)
+      switch (type) {
+        case "audioCall":
+          lastMessage = "📞 Audio call";
+          break;
+        case "videoCall":
+          lastMessage = "📹 Video call";
+          break;
+        default:
+          lastMessage = "New message";
+      }
+    }
+    
     await Conversation.findByIdAndUpdate(conversationId, {
       lastMessage,
       updatedAt: new Date(),

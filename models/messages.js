@@ -8,7 +8,7 @@ const messageSchema = new mongoose.Schema(
     url: { type: String, required: false }, // For file/image attachments
     type: { 
       type: String, 
-      enum: ["text", "image", "file", "audio", "video"], 
+      enum: ["text", "image", "file", "audio", "video", "voice", "audioCall", "videoCall"], 
       default: "text" 
     },
     readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
