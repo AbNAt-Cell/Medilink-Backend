@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import Message from "../models/messages.js";
+import Message from "../models/Messages.js";
 import Conversation from "../models/Conversation.js";
 import User from "../models/userModel.js";
 import Form from "../models/Form.js";   
