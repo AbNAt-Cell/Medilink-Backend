@@ -14,6 +14,16 @@ const addressSchema = new mongoose.Schema(
   { _id: false } // ✅ prevents creation of a separate _id for the subdocument
 );
 
+const clinicInfoSchema = new mongoose.Schema(
+  {
+    clinicName: { type: String, required: false },
+    clinicAddress: { type: String, required: false },
+    clinicEmail: { type: String, required: false },
+    clinicPhone: { type: String, required: false },
+  },
+  { _id: false } // ✅ prevents creation of a separate _id for the subdocument
+);
+
 const userSchema = new mongoose.Schema(
   {
     firstname: { type: String, required: true },
@@ -42,7 +52,10 @@ const userSchema = new mongoose.Schema(
     address: addressSchema,
     addressString: String,
 
-    // ✅ Link to a clinic
+    // ✅ Embedded clinic info object
+    clinicInfo: clinicInfoSchema,
+
+    // ✅ Link to a clinic (keeping for backwards compatibility)
     clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic", default: null },
 
     // ✅ Password reset fields

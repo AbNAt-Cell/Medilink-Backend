@@ -12,13 +12,78 @@ export const signup = async (req, res) => {
             return res.status(400).send({message: "Kindly input all required fields"})
           }
 
+    // Extract required fields
     const { firstname, lastname, phone, dateofBirth, email, password, role } = req.body;
+
+    // Extract optional fields
+    const { 
+      middleName, 
+      country, 
+      bio, 
+      specialization, 
+      ssn, 
+      resume, 
+      certificate, 
+      driversLicense,
+      address,
+      addressString,
+      clinicInfo,
+      avatarUrl,
+      signatureUrl,
+      peerId,
+      clinic
+    } = req.body;
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "User already exists" });
 
-    const user = await User.create({ firstname, lastname, phone, dateofBirth, email, password, role });
-    res.status(201).json({ token: generateToken(user._id, user.role) });
+    // Create user data object with all provided fields
+    const userData = {
+      firstname, 
+      lastname, 
+      phone, 
+      dateofBirth, 
+      email, 
+      password, 
+      role
+    };
+
+    // Add optional fields if provided
+    if (middleName) userData.middleName = middleName;
+    if (country) userData.country = country;
+    if (bio) userData.bio = bio;
+    if (specialization) userData.specialization = specialization;
+    if (ssn) userData.ssn = ssn;
+    if (resume) userData.resume = resume;
+    if (certificate) userData.certificate = certificate;
+    if (driversLicense) userData.driversLicense = driversLicense;
+    if (address) userData.address = address;
+    if (addressString) userData.addressString = addressString;
+    if (clinicInfo) userData.clinicInfo = clinicInfo;
+    if (avatarUrl) userData.avatarUrl = avatarUrl;
+    if (signatureUrl) userData.signatureUrl = signatureUrl;
+    if (peerId) userData.peerId = peerId;
+    if (clinic) userData.clinic = clinic;
+
+    console.log("📝 Creating user with data:", JSON.stringify(userData, null, 2));
+
+    const user = await User.create(userData);
+    
+    console.log("✅ User created successfully with ID:", user._id);
+    
+    res.status(201).json({ 
+      token: generateToken(user._id, user.role),
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        address: user.address,
+        addressString: user.addressString
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -64,7 +129,7 @@ export const editProfile = async (req, res) => {
       return res.status(400).json({ message: "No update data provided" });
     }
 
-    const allowed = ["firstname", "lastname", "phone", "dateofBirth", "avatarUrl", "country", "bio", "specialization", "address", "addressString"];
+    const allowed = ["firstname", "lastname", "phone", "dateofBirth", "avatarUrl", "country", "bio", "specialization", "address", "addressString", "clinicInfo"];
     const updates = {};
     
     // Process allowed fields
@@ -77,6 +142,15 @@ export const editProfile = async (req, res) => {
           } else if (typeof req.body[key] === "string") {
             console.log("⚠️ Address field received as string, skipping:", req.body[key]);
             continue; // Skip invalid address format
+          }
+        }
+        // Special handling for clinicInfo field
+        else if (key === "clinicInfo") {
+          if (typeof req.body[key] === "object" && req.body[key] !== null) {
+            updates[key] = req.body[key];
+          } else if (typeof req.body[key] === "string") {
+            console.log("⚠️ ClinicInfo field received as string, skipping:", req.body[key]);
+            continue; // Skip invalid clinicInfo format
           }
         } else {
           updates[key] = req.body[key];
@@ -98,6 +172,16 @@ export const editProfile = async (req, res) => {
       updates.address = {
         ...currentUser.address,
         ...updates.address
+      };
+    }
+
+    // Handle nested clinicInfo updates
+    if (updates.clinicInfo && typeof updates.clinicInfo === 'object') {
+      // Get current user to merge clinicInfo
+      const currentUser = await User.findById(req.user._id);
+      updates.clinicInfo = {
+        ...currentUser.clinicInfo,
+        ...updates.clinicInfo
       };
     }
 
