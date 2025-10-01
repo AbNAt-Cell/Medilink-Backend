@@ -62,9 +62,10 @@ app.use((req, res, next) => {
 mongoose
   .connect(process.env.MONGODB_URL)
   .then(() => {
-    // ✅ Run httpServer instead of app.listen
-    httpServer.listen(process.env.PORT, () => {
-      console.log(`🚀 Server + Socket.IO running on ${process.env.PORT}`);
+    // ✅ Run httpServer instead of app.listen with PORT fallback
+    const PORT = process.env.PORT || 8080;
+    httpServer.listen(PORT, () => {
+      console.log(`🚀 Server + Socket.IO running on ${PORT}`);
     });
     console.log("✅ MongoDB connected");
   })
