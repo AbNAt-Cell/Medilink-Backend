@@ -1,4 +1,4 @@
-import Message from "../models/Messages.js";
+import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
 
 

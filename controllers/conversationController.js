@@ -1,7 +1,7 @@
 import Conversation from "../models/Conversation.js";
 import User from "../models/userModel.js";
 import { onlineUsers } from "../socket/socket.js";
-// import Message from "../models/Messages.js";
+// import Message from "../models/messages.js";
 
 
 // Start conversation between two users
