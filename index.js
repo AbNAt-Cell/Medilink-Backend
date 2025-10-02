@@ -30,7 +30,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors(corsOptions));
 
-
 // Health check
 app.get("/health", (req, res) => res.status(200).json({ message: "ok" }));
 

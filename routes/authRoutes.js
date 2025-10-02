@@ -25,7 +25,7 @@ router.get("/me", protect, me);
 router.get("/search", protect, searchUsers);
 
 // ✅ fixed-path routes FIRST
-router.patch("/profile", protect, editProfile);
+router.put("/profile", protect, editProfile);
 router.get("/messaging", protect, searchMessagingUsers);
 
 // ✅ dynamic route LAST

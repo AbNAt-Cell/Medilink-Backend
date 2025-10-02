@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     country: String,
+    sex: { type: String, enum: ["male", "female", "transgender", "non-binary", "prefer-not-to-say", "other"], required: false },
     password: { type: String, required: true },
     avatarUrl: String,
     signatureUrl: { type: String, default: null },
@@ -55,8 +56,8 @@ const userSchema = new mongoose.Schema(
     // ✅ Embedded clinic info object
     clinicInfo: clinicInfoSchema,
 
-    // ✅ Link to a clinic (keeping for backwards compatibility)
-    clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic", default: null },
+    // // ✅ Link to a clinic (keeping for backwards compatibility)
+    // clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic", default: null },
 
     // ✅ Password reset fields
     resetPasswordToken: { type: String, default: null },

@@ -19,6 +19,7 @@ export const signup = async (req, res) => {
     const { 
       middleName, 
       country, 
+      sex,
       bio, 
       specialization, 
       ssn, 
@@ -51,6 +52,7 @@ export const signup = async (req, res) => {
     // Add optional fields if provided
     if (middleName) userData.middleName = middleName;
     if (country) userData.country = country;
+    if (sex) userData.sex = sex;
     if (bio) userData.bio = bio;
     if (specialization) userData.specialization = specialization;
     if (ssn) userData.ssn = ssn;
@@ -123,80 +125,152 @@ export const me = async (req, res) => {
 
 export const editProfile = async (req, res) => {
   try {
-
     // Check if request body is empty
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({ message: "No update data provided" });
     }
 
-    const allowed = ["firstname", "lastname", "phone", "dateofBirth", "avatarUrl", "country", "bio", "specialization", "address", "addressString", "clinicInfo"];
-    const updates = {};
-    
-    // Process allowed fields
-    for (const key of allowed) {
-      if (req.body[key] !== undefined && req.body[key] !== null && req.body[key] !== "") {
-        // Special handling for address field
-        if (key === "address") {
-          if (typeof req.body[key] === "object" && req.body[key] !== null) {
-            updates[key] = req.body[key];
-          } else if (typeof req.body[key] === "string") {
-            console.log("⚠️ Address field received as string, skipping:", req.body[key]);
-            continue; // Skip invalid address format
-          }
-        }
-        // Special handling for clinicInfo field
-        else if (key === "clinicInfo") {
-          if (typeof req.body[key] === "object" && req.body[key] !== null) {
-            updates[key] = req.body[key];
-          } else if (typeof req.body[key] === "string") {
-            console.log("⚠️ ClinicInfo field received as string, skipping:", req.body[key]);
-            continue; // Skip invalid clinicInfo format
-          }
-        } else {
-          updates[key] = req.body[key];
-        }
-      }
+    // Get current user first
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    console.log("✅ Filtered updates:", JSON.stringify(updates, null, 2));
+    // Define allowed fields for update
+    const allowed = [
+      "firstname", 
+      "lastname", 
+      "middleName",
+      "phone", 
+      "dateofBirth", 
+      "sex",
+      "avatarUrl", 
+      "signatureUrl",
+      "country", 
+      "bio", 
+      "specialization", 
+      "certificate",
+      "driversLicense",
+      "resume",
+      "ssn",
+      "address", 
+      "addressString", 
+      "clinicInfo"
+    ];
+
+    // Build update object with proper handling for each field type
+    const updates = {};
+    
+    for (const key of allowed) {
+      if (req.body.hasOwnProperty(key)) {
+        const value = req.body[key];
+        
+        // Handle null values (allow clearing fields)
+        if (value === null) {
+          updates[key] = null;
+          continue;
+        }
+        
+        // Handle undefined (skip)
+        if (value === undefined) {
+          continue;
+        }
+        
+        // Handle string fields
+        if (typeof value === "string") {
+          // Allow empty strings for some fields, but skip for others
+          if (value === "" && ["bio", "specialization", "middleName", "country", "certificate", "driversLicense", "resume", "ssn", "addressString"].includes(key)) {
+            updates[key] = ""; // Allow empty strings for optional text fields
+          } else if (value.trim() !== "") {
+            updates[key] = value.trim();
+          }
+          continue;
+        }
+        
+        // Handle nested address object
+        if (key === "address" && typeof value === "object" && value !== null) {
+          // Validate address structure
+          const addressFields = ["street", "streetLine2", "city", "region", "postalCode", "country"];
+          const validAddress = {};
+          
+          for (const addrField of addressFields) {
+            if (value.hasOwnProperty(addrField)) {
+              if (typeof value[addrField] === "string") {
+                validAddress[addrField] = value[addrField].trim();
+              } else if (value[addrField] === null) {
+                validAddress[addrField] = null;
+              }
+            }
+          }
+          
+          // Only update if at least one valid address field is provided
+          if (Object.keys(validAddress).length > 0) {
+            updates[key] = {
+              ...(currentUser.address?.toObject() || {}),
+              ...validAddress
+            };
+          }
+          continue;
+        }
+        
+        // Handle nested clinicInfo object
+        if (key === "clinicInfo" && typeof value === "object" && value !== null) {
+          // Validate clinicInfo structure
+          const clinicFields = ["clinicName", "clinicAddress", "clinicEmail", "clinicPhone"];
+          const validClinicInfo = {};
+          
+          for (const clinicField of clinicFields) {
+            if (value.hasOwnProperty(clinicField)) {
+              if (typeof value[clinicField] === "string") {
+                validClinicInfo[clinicField] = value[clinicField].trim();
+              } else if (value[clinicField] === null) {
+                validClinicInfo[clinicField] = null;
+              }
+            }
+          }
+          
+          // Only update if at least one valid clinic field is provided
+          if (Object.keys(validClinicInfo).length > 0) {
+            updates[key] = {
+              ...(currentUser.clinicInfo?.toObject() || {}),
+              ...validClinicInfo
+            };
+          }
+          continue;
+        }
+        
+        // Handle other field types (dates, numbers, etc.)
+        updates[key] = value;
+      }
+    }
 
     // Check if there are any valid updates
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "No valid fields to update" });
     }
 
-    // Handle nested address updates
-    if (updates.address && typeof updates.address === 'object') {
-      // Get current user to merge address
-      const currentUser = await User.findById(req.user._id);
-      updates.address = {
-        ...currentUser.address,
-        ...updates.address
-      };
-    }
+    console.log("🔄 Processing updates:", Object.keys(updates));
+    if (updates.address) console.log("📍 Address update:", JSON.stringify(updates.address, null, 2));
+    if (updates.clinicInfo) console.log("🏥 ClinicInfo update:", JSON.stringify(updates.clinicInfo, null, 2));
+    if (updates.sex) console.log("👤 Sex update:", updates.sex);
 
-    // Handle nested clinicInfo updates
-    if (updates.clinicInfo && typeof updates.clinicInfo === 'object') {
-      // Get current user to merge clinicInfo
-      const currentUser = await User.findById(req.user._id);
-      updates.clinicInfo = {
-        ...currentUser.clinicInfo,
-        ...updates.clinicInfo
-      };
-    }
-
+    // Use findByIdAndUpdate with proper options
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
-      updates,
-      { new: true, runValidators: true }
+      { $set: updates }, // Use $set operator for explicit field updates
+      { 
+        new: true, 
+        runValidators: true,
+        upsert: false // Don't create if user doesn't exist
+      }
     ).select("-password");
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found after update" });
     }
 
-    console.log("🎉 Profile updated successfully for user:", updatedUser._id);
-
+    console.log("✅ Profile updated successfully for user:", updatedUser._id);
+    
     res.json({ 
       message: "Profile updated successfully", 
       user: updatedUser,
@@ -204,6 +278,16 @@ export const editProfile = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ editProfile error:", err);
+    
+    // Enhanced error logging for validation issues
+    if (err.name === 'ValidationError') {
+      console.error("❌ Validation details:", err.errors);
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors 
+      });
+    }
     
     // Handle address casting errors specifically
     if (err.message && err.message.includes("Cast to Embedded failed")) {
@@ -218,15 +302,6 @@ export const editProfile = async (req, res) => {
             country: "USA"
           }
         }
-      });
-    }
-
-    // Handle validation errors
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ 
-        message: "Validation error", 
-        errors 
       });
     }
 

@@ -8,11 +8,17 @@ export const protect = async (req, res, next) => {
   try {
     const hdr = req.headers.authorization || "";
     const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;
-    if (!token) return res.status(401).json({ message: "No token provided" });
+    
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
 
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(payload.id).select("-password");
-    if (!user) return res.status(401).json({ message: "User not found" });
+    
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
 
     req.user = user;
     next();
