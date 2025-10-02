@@ -8,9 +8,9 @@ import {
 
 const router = express.Router();
 
-// Only doctors can manage signatures
-router.post("/upload", protect, requireRole("doctor"), uploadSignature);
-router.patch("/update", protect, requireRole("doctor"), updateSignature);
-router.delete("/delete", protect, requireRole("doctor"), deleteSignature);
+// Both doctors and marketers can manage signatures
+router.post("/upload", protect, requireRole("doctor", "marketer"), uploadSignature);
+router.patch("/update", protect, requireRole("doctor", "marketer"), updateSignature);
+router.delete("/delete", protect, requireRole("doctor", "marketer"), deleteSignature);
 
 export default router;

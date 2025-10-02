@@ -21,15 +21,20 @@ export default function socketSetup(httpServer) {
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       credentials: true,
       optionsSuccessStatus: 200
-    }
+    },
+    // Production optimizations for Render
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    connectTimeout: 45000
   });
 
   io.on("connection", (socket) => {
     console.log("⚡ New client connected", socket.id);
 
-    // -----------------------------
+  
     // User joins
-    // -----------------------------
     socket.on("join", (userId) => {
       const existing = onlineUsers.get(userId) || {};
       onlineUsers.set(userId, { ...existing, socketId: socket.id });
@@ -37,9 +42,9 @@ export default function socketSetup(httpServer) {
       console.log(`✅ User ${userId} connected`);
     });
 
-    // -----------------------------
+    
     // Peer ID registration for audio/video
-    // -----------------------------
+   
     socket.on("peer:id", ({ userId, peerId }) => {
       const existing = onlineUsers.get(userId) || {};
       onlineUsers.set(userId, { ...existing, peerId });
@@ -47,9 +52,8 @@ export default function socketSetup(httpServer) {
       console.log(`✅ User ${userId} registered with Peer ID: ${peerId}`);
     });
 
-    // -----------------------------
+    
     // Messaging
-    // -----------------------------
     socket.on("message:send", async ({ conversationId, senderId, text }) => {
       try {
         const message = await Message.create({
@@ -100,9 +104,9 @@ export default function socketSetup(httpServer) {
       }
     });
 
-    // -----------------------------
+   
     // WebRTC placeholders (optional)
-    // -----------------------------
+    
     socket.on("call:offer", (data) => {
       socket.broadcast.emit("call:offer", data);
     });
@@ -111,9 +115,9 @@ export default function socketSetup(httpServer) {
       socket.broadcast.emit("call:answer", data);
     });
 
-    // -----------------------------
+    
     // Disconnect
-    // -----------------------------
+    
     socket.on("disconnect", () => {
       for (let [userId, user] of onlineUsers.entries()) {
         if (user.socketId === socket.id) {
@@ -125,9 +129,9 @@ export default function socketSetup(httpServer) {
     });
   });
 
-  // -----------------------------
+  
   // Reminder system
-  // -----------------------------
+ 
   setInterval(async () => {
     try {
       const pendingForms = await Form.find({ status: "pending" });

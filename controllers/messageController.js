@@ -101,8 +101,7 @@ export const getMessages = async (req, res) => {
         const isOnline = onlineUsers.has(senderId);
         messageObj.sender = {
           ...messageObj.sender,
-          isOnline: isOnline,
-          status: isOnline ? "online" : "offline"
+          isOnline: isOnline
         };
       }
       return messageObj;

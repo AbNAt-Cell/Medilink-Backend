@@ -380,8 +380,7 @@ export const searchMessagingUsers = async (req, res) => {
       const isOnline = onlineUsers.has(user._id.toString());
       return {
         ...userObj,
-        isOnline: isOnline,
-        status: isOnline ? "online" : "offline"
+        isOnline: isOnline
       };
     });
 
@@ -397,23 +396,26 @@ export const getUserProfile = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await User.findById(userId)
-      .select("-password")
-      .populate("clinic");   // ✅ populate clinic details
+      .select("-password -resetPasswordToken -resetPasswordExpires");
     
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     
     // Add online status to user profile
     const userObj = user.toObject();
     const isOnline = onlineUsers.has(userId);
     const userWithOnlineStatus = {
       ...userObj,
-      isOnline: isOnline,
-      status: isOnline ? "online" : "offline"
+      isOnline: isOnline
     };
     
     res.json(userWithOnlineStatus);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ getUserProfile error:", err);
+    console.error("❌ Error details:", err.message);
+    console.error("❌ Stack trace:", err.stack);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -505,6 +507,37 @@ export const resetPassword = async (req, res) => {
   } catch (err) {
     console.error("❌ resetPassword error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🧪 TESTING: Set user online status manually (for Thunder Client testing)
+export const setUserOnlineStatus = async (req, res) => {
+  try {
+    const { userId, online } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    if (online) {
+      // Set user online with fake socket ID
+      onlineUsers.set(userId, { socketId: `test-${Date.now()}` });
+      console.log(`🧪 User ${userId} set to ONLINE`);
+    } else {
+      // Set user offline
+      onlineUsers.delete(userId);
+      console.log(`🧪 User ${userId} set to OFFLINE`);
+    }
+
+    const onlineUsersList = Array.from(onlineUsers.keys());
+    console.log(`📊 Current online users:`, onlineUsersList);
+    
+    res.json({
+      message: `User ${userId} is now ${online ? 'ONLINE' : 'OFFLINE'}`,
+      onlineUsers: onlineUsersList
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 

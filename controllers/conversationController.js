@@ -70,8 +70,7 @@ export const getMyConversations = async (req, res) => {
           lastname: participant.lastname,
           email: participant.email,
           role: participant.role,
-          isOnline: isOnline, // Explicit boolean
-          status: isOnline ? "online" : "offline" // Explicit string
+          isOnline: isOnline
         };
         
         console.log(`✅ Updated participant:`, JSON.stringify(updatedParticipant, null, 2));

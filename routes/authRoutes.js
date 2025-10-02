@@ -9,6 +9,7 @@ import {
   searchUsers,
   requestPasswordReset,
   resetPassword,
+  setUserOnlineStatus,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/auth.js";
 
@@ -23,6 +24,9 @@ router.post("/reset-password", resetPassword);
 
 router.get("/me", protect, me);
 router.get("/search", protect, searchUsers);
+
+// 🧪 Testing route for online status
+router.post("/test/online-status", protect, setUserOnlineStatus);
 
 // ✅ fixed-path routes FIRST
 router.put("/profile", protect, editProfile);
