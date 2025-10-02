@@ -1,5 +1,7 @@
 import Message from "../models/messages.js";
 import Conversation from "../models/Conversation.js";
+import User from "../models/userModel.js";
+import { onlineUsers } from "../socket/socket.js";
 
 
 // Send message in conversation
@@ -84,7 +86,6 @@ export const sendMessage = async (req, res) => {
 
 
 // Get messages in a conversation
-
 export const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -92,7 +93,22 @@ export const getMessages = async (req, res) => {
       .populate("sender", "firstname lastname email role avatarUrl")
       .sort({ createdAt: 1 });
 
-    res.json(messages);
+    // Add online status to message senders
+    const messagesWithOnlineStatus = messages.map(message => {
+      const messageObj = message.toObject();
+      if (messageObj.sender) {
+        const senderId = messageObj.sender._id.toString();
+        const isOnline = onlineUsers.has(senderId);
+        messageObj.sender = {
+          ...messageObj.sender,
+          isOnline: isOnline,
+          status: isOnline ? "online" : "offline"
+        };
+      }
+      return messageObj;
+    });
+
+    res.json(messagesWithOnlineStatus);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/userModel.js";
+import { onlineUsers } from "../socket/socket.js";
+import { onlineUsers } from "../socket/socket.js";
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
@@ -337,7 +339,18 @@ export const searchUsers = async (req, res) => {
       ],
     }).select("-password"); // hide password
 
-    res.json(users);
+    // Add online status to users
+    const usersWithOnlineStatus = users.map(user => {
+      const userObj = user.toObject();
+      const isOnline = onlineUsers.has(user._id.toString());
+      return {
+        ...userObj,
+        isOnline: isOnline,
+        status: isOnline ? "online" : "offline"
+      };
+    });
+
+    res.json(usersWithOnlineStatus);
   } catch (err) {
     console.error("Error searching users:", err);
     res.status(500).json({ message: "Server error" });
@@ -362,7 +375,18 @@ export const searchMessagingUsers = async (req, res) => {
 
     const users = await User.find(filter).select("firstname lastname email role");
 
-    res.json(users);
+    // Add online status to users
+    const usersWithOnlineStatus = users.map(user => {
+      const userObj = user.toObject();
+      const isOnline = onlineUsers.has(user._id.toString());
+      return {
+        ...userObj,
+        isOnline: isOnline,
+        status: isOnline ? "online" : "offline"
+      };
+    });
+
+    res.json(usersWithOnlineStatus);
   } catch (err) {
     console.error("❌ searchMessagingUsers error:", err);
     res.status(500).json({ message: "Server error" });
@@ -376,8 +400,19 @@ export const getUserProfile = async (req, res) => {
     const user = await User.findById(userId)
       .select("-password")
       .populate("clinic");   // ✅ populate clinic details
+    
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
+    
+    // Add online status to user profile
+    const userObj = user.toObject();
+    const isOnline = onlineUsers.has(userId);
+    const userWithOnlineStatus = {
+      ...userObj,
+      isOnline: isOnline,
+      status: isOnline ? "online" : "offline"
+    };
+    
+    res.json(userWithOnlineStatus);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
