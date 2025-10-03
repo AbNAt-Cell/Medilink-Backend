@@ -1,5 +1,10 @@
 import User from "../../models/userModel.js";
 import jwt from "jsonwebtoken";
+import { onlineUsers } from "../../socket/socket.js";
+import Message from "../../models/messages.js";
+import Conversation from "../../models/Conversation.js";
+import Notification from "../../models/Notifications.js";
+import Form from "../../models/Form.js";
 
 const generateToken = (id, role) =>
   jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
@@ -110,11 +115,69 @@ export const editUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
-    const user = await User.findByIdAndDelete(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ message: "User deleted" });
+    // Check if user exists first
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prevent deletion of the last admin
+    if (user.role === "admin") {
+      const adminCount = await User.countDocuments({ role: "admin" });
+      if (adminCount <= 1) {
+        return res.status(400).json({ 
+          message: "Cannot delete the last admin user" 
+        });
+      }
+    }
+
+    // Clean up related data
+    await Promise.all([
+      // Remove user from conversations (update participants)
+      Conversation.updateMany(
+        { participants: id },
+        { $pull: { participants: id } }
+      ),
+      
+      // Delete messages sent by this user
+      Message.deleteMany({ sender: id }),
+      
+      // Delete notifications for this user
+      Notification.deleteMany({ user: id }),
+      
+      // Update forms - remove user reference or reassign
+      Form.updateMany(
+        { claimedBy: id },
+        { $unset: { claimedBy: 1 }, status: "pending" }
+      )
+    ]);
+
+    // Remove from online users if connected
+    if (onlineUsers.has(id)) {
+      onlineUsers.delete(id);
+      console.log(`🗑️ Removed deleted user ${id} from online users`);
+    }
+
+    // Delete the user
+    await User.findByIdAndDelete(id);
+
+    console.log(`✅ User ${user.email} (${user.role}) deleted successfully`);
+    
+    res.json({ 
+      message: "User and associated data deleted successfully",
+      deletedUser: {
+        id: user._id,
+        email: user.email,
+        name: `${user.firstname} ${user.lastname}`,
+        role: user.role
+      }
+    });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error("❌ Delete user error:", err);
+    res.status(500).json({ 
+      message: "Failed to delete user", 
+      error: err.message 
+    });
   }
 };
 
