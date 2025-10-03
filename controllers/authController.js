@@ -412,9 +412,7 @@ export const getUserProfile = async (req, res) => {
     
     res.json(userWithOnlineStatus);
   } catch (err) {
-    console.error("❌ getUserProfile error:", err);
-    console.error("❌ Error details:", err.message);
-    console.error("❌ Stack trace:", err.stack);
+    
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -510,6 +508,61 @@ export const resetPassword = async (req, res) => {
   }
 };
 
+// 🔐 Change Password (for authenticated users)
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        message: "Current password and new password are required" 
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        message: "New password must be at least 6 characters long" 
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ 
+        message: "New password must be different from current password" 
+      });
+    }
+
+    // Get user with password field
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await user.matchPassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ 
+        message: "Current password is incorrect" 
+      });
+    }
+
+    // Update password (will be hashed by pre-save middleware)
+    user.password = newPassword;
+    await user.save();
+
+    console.log(`✅ Password successfully changed for user: ${user.email}`);
+
+    res.status(200).json({ 
+      message: "Password changed successfully" 
+    });
+
+  } catch (err) {
+    console.error("❌ changePassword error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // 🧪 TESTING: Set user online status manually (for Thunder Client testing)
 export const setUserOnlineStatus = async (req, res) => {
   try {
@@ -535,6 +588,30 @@ export const setUserOnlineStatus = async (req, res) => {
     res.json({
       message: `User ${userId} is now ${online ? 'ONLINE' : 'OFFLINE'}`,
       onlineUsers: onlineUsersList
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// Debug endpoint to check online users
+export const getOnlineUsersDebug = async (req, res) => {
+  try {
+    const onlineUsersList = Array.from(onlineUsers.keys());
+    const onlineUsersMap = Array.from(onlineUsers.entries()).map(([userId, data]) => ({
+      userId,
+      socketId: data.socketId,
+      peerId: data.peerId || null
+    }));
+    
+    console.log(`🔍 DEBUG - Current online users:`, onlineUsersList);
+    console.log(`🔍 DEBUG - Online users map:`, onlineUsersMap);
+    
+    res.json({
+      count: onlineUsersList.length,
+      userIds: onlineUsersList,
+      usersMap: onlineUsersMap,
+      timestamp: new Date().toISOString()
     });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });

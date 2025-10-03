@@ -9,7 +9,8 @@ import {
   searchUsers,
   requestPasswordReset,
   resetPassword,
-  setUserOnlineStatus,
+  changePassword,
+  setUserOnlineStatus
 } from "../controllers/authController.js";
 import { protect } from "../middleware/auth.js";
 
@@ -22,11 +23,15 @@ router.post("/login", login);
 router.post("/request-reset", requestPasswordReset);
 router.post("/reset-password", resetPassword);
 
+// 🔐 Change password route (requires authentication)
+router.post("/changepassword", protect, changePassword);
+
 router.get("/me", protect, me);
 router.get("/search", protect, searchUsers);
 
 // 🧪 Testing route for online status
 router.post("/test/online-status", protect, setUserOnlineStatus);
+// router.get("/debug/online-users", protect, getOnlineUsersDebug);
 
 // ✅ fixed-path routes FIRST
 router.put("/profile", protect, editProfile);
