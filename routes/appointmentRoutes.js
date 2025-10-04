@@ -47,7 +47,7 @@ router.get("/doctor/:doctorId", protect, getAppointmentsByDoctorId);
 // Update appointment (marketer only)
 router.put("/:id", protect, requireRole("marketer"), editAppointment);
 
-// Delete appointment (marketer only)
-router.delete("/:id", protect, requireRole("marketer"), deleteAppointment);
+// Delete appointment (any user can delete appointments they're associated with)
+router.delete("/:appointmentId", protect, deleteAppointment);
 
 export default router;

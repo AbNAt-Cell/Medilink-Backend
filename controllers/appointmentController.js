@@ -435,25 +435,103 @@ export const editAppointment = async (req, res) => {
 export const deleteAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.params;
-    const appointment = await Appointment.findByIdAndDelete(appointmentId);
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    const userId = req.user._id;
+    const userRole = req.user.role;
 
-    // Notify doctor + marketer
-    const users = [appointment.doctor, appointment.marketer];
-    for (let userId of users) {
-      if (!userId) continue;
-      const notif = await Notification.create({
-        user: userId,
-        type: "appointment",
-        message: "❌ Appointment was cancelled.",
-        link: `/appointments`
-      });
-      const socketId = getUserSocket(userId);
-      if (socketId) req.io.to(socketId).emit("notification:new", notif);
+    // Check if appointment exists first
+    const appointment = await Appointment.findById(appointmentId)
+      .populate("doctor", "firstname lastname email")
+      .populate("marketer", "firstname lastname email");
+    
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
     }
 
-    res.json({ message: "Appointment deleted" });
+    // Check if user is associated with this appointment (doctor or marketer)
+    const isDoctor = appointment.doctor?.toString() === userId.toString();
+    const isMarketer = appointment.marketer?.toString() === userId.toString();
+    
+    if (!isDoctor && !isMarketer) {
+      return res.status(403).json({ 
+        message: "Access denied: You can only delete appointments you created" 
+      });
+    }
+
+    // Store appointment info for response and notifications
+    const appointmentInfo = {
+      id: appointment._id,
+      clientName: appointment.client.name,
+      date: appointment.date,
+      time: appointment.time,
+      status: appointment.status,
+      doctor: appointment.doctor,
+      marketer: appointment.marketer
+    };
+
+    // Clean up related notifications first
+    await Notification.deleteMany({
+      $and: [
+        { type: "appointment" },
+        { 
+          $or: [
+            { message: { $regex: appointmentInfo.clientName, $options: "i" } },
+            { link: { $regex: appointmentId } }
+          ]
+        }
+      ]
+    });
+
+    // Delete the appointment
+    await Appointment.findByIdAndDelete(appointmentId);
+
+    // Notify relevant users about the deletion
+    const usersToNotify = [appointment.doctor?._id, appointment.marketer?._id].filter(Boolean);
+    
+    for (let userId of usersToNotify) {
+      // Don't notify the user who deleted it
+      if (userId.toString() === req.user._id.toString()) continue;
+      
+      try {
+        const notif = await Notification.create({
+          user: userId,
+          type: "appointment",
+          message: `❌ Appointment with ${appointmentInfo.clientName} was cancelled`,
+          link: `/appointments`
+        });
+
+        const socketId = getUserSocket(userId.toString());
+        if (socketId && req.io) {
+          req.io.to(socketId).emit("notification:new", notif);
+        }
+      } catch (notifError) {
+        console.error("❌ Error sending deletion notification:", notifError);
+        // Continue execution even if notification fails
+      }
+    }
+
+    console.log(`✅ Appointment ${appointmentId} deleted by user: ${req.user.email}`);
+    console.log(`📋 Deleted appointment: ${appointmentInfo.clientName} on ${appointmentInfo.date}`);
+
+    res.json({ 
+      message: "Appointment deleted successfully",
+      deletedAppointment: {
+        id: appointmentInfo.id,
+        clientName: appointmentInfo.clientName,
+        date: appointmentInfo.date,
+        time: appointmentInfo.time,
+        status: appointmentInfo.status,
+        deletedBy: {
+          role: userRole,
+          name: `${req.user.firstname} ${req.user.lastname}`,
+          email: req.user.email
+        }
+      }
+    });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Delete appointment error:", err);
+    res.status(500).json({ 
+      message: "Failed to delete appointment", 
+      error: err.message 
+    });
   }
 };
