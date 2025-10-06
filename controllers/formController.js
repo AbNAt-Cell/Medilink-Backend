@@ -146,7 +146,7 @@ export const acceptForm = async (req, res) => {
       form: form._id,
       date: form.preferredDate,
       time: form.preferredTime,
-      status: "scheduled"
+      status: "pending"
     });
 
     // Notify doctor

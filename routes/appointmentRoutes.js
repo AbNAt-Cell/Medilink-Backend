@@ -10,7 +10,7 @@ import {
   createAppointment,
   getAppointmentDetails,
   submitAppointment,
-  marketerCreateCompletedAppointment,
+  marketerCreateReviewAppointment,
   getAppointmentsByDoctorId
 } from "../controllers/appointmentController.js";
 
@@ -26,7 +26,7 @@ router.post(
   "/marketer",
   protect,
   requireRole("marketer"),
-  marketerCreateCompletedAppointment
+  marketerCreateReviewAppointment
 );
 
 // Marketer's appointments

@@ -60,7 +60,7 @@ export const createAppointment = async (req, res) => {
         date: parsedDate,
         time,
         description,
-        status: "scheduled",
+        status: "pending",
         createdBy: {
           user: doctorId,
           name: `${req.user.firstname} ${req.user.lastname}`,
@@ -113,7 +113,7 @@ export const createAppointment = async (req, res) => {
 };
 
 
-export const marketerCreateCompletedAppointment = async (req, res) => {
+export const marketerCreateReviewAppointment = async (req, res) => {
   try {    
     // marketer is the logged-in user
     const marketerId = req.user._id;
@@ -167,7 +167,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       date: parsedDate,
       time,
       description,
-      status: "completed"
+      status: "review"
     
     });
 
@@ -176,7 +176,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       const notif = await Notification.create({
         user: doctor,
         type: "appointment",
-        message: `🆕 New completed appointment from marketer`,
+        message: `🆕 New review appointment from marketer`,
         link: `/appointments/${appointment._id}`
       });
       const socketId = getUserSocket(doctor);
@@ -194,12 +194,12 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
     console.log("📋 Response appointment createdBy:", responseAppointment.createdBy);
 
     res.status(201).json({
-      message: "Appointment created and marked as completed",
+      message: "Appointment created and marked for review",
       appointment: responseAppointment,
       createdBy: `${req.user.firstname} ${req.user.lastname}`
     });
   } catch (err) {
-    console.error("❌ marketerCreateCompletedAppointment error:", err);
+    console.error("❌ marketerCreateReviewAppointment error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
