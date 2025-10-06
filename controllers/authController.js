@@ -372,7 +372,7 @@ export const searchMessagingUsers = async (req, res) => {
       filter = { role: "marketer" };
     } // admin sees all
 
-    const users = await User.find(filter).select("firstname lastname email role");
+    const users = await User.find(filter).select("firstname lastname email role avatarUrl");
 
     // Add online status to users
     const usersWithOnlineStatus = users.map(user => {

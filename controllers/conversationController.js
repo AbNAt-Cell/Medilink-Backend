@@ -7,7 +7,7 @@ import { onlineUsers } from "../socket/socket.js";
 // Start conversation between two users
 export const startConversation = async (req, res) => {
   try {
-    const { recipientId } = req.body;
+    const { recipientId } = req.body; 
 
     // Fetch recipient user
     const recipient = await User.findById(recipientId);
@@ -34,7 +34,28 @@ export const startConversation = async (req, res) => {
       });
     }
 
-    res.json(conversation);
+    // Populate conversation with participant details including avatars
+    const populatedConversation = await Conversation.findById(conversation._id)
+      .populate("participants", "firstname lastname email role avatarUrl");
+
+    // Add online status to participants
+    const conversationObj = populatedConversation.toObject();
+    conversationObj.participants = conversationObj.participants.map(participant => {
+      const participantId = participant._id.toString();
+      const isOnline = onlineUsers.has(participantId);
+      
+      return {
+        _id: participant._id,
+        firstname: participant.firstname,
+        lastname: participant.lastname,
+        email: participant.email,
+        role: participant.role,
+        avatarUrl: participant.avatarUrl,
+        isOnline: isOnline
+      };
+    });
+
+    res.json(conversationObj);
   } catch (err) {
     console.error("❌ startConversation error:", err);
     res.status(500).json({ message: "Server error" });
@@ -49,7 +70,7 @@ export const getMyConversations = async (req, res) => {
     const conversations = await Conversation.find({
       participants: req.user._id
     })
-      .populate("participants", "firstname lastname email role")
+      .populate("participants", "firstname lastname email role avatarUrl")
       .sort({ updatedAt: -1 });
 
     console.log(`📋 Found ${conversations.length} conversations`);
@@ -70,6 +91,7 @@ export const getMyConversations = async (req, res) => {
           lastname: participant.lastname,
           email: participant.email,
           role: participant.role,
+          avatarUrl: participant.avatarUrl,
           isOnline: isOnline
         };
         

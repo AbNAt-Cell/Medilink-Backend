@@ -44,10 +44,10 @@ router.get("/:appointmentId", protect, getAppointmentDetails);
 // Get appointments for a specific doctor by ID
 router.get("/doctor/:doctorId", protect, getAppointmentsByDoctorId);
 
-// Update appointment (marketer only)
-router.put("/:id", protect, requireRole("marketer"), editAppointment);
+// Update appointment
+router.put("/:id", protect, editAppointment);
 
-// Delete appointment (any user can delete appointments they're associated with)
+// Delete appointment (basic deletion)
 router.delete("/:appointmentId", protect, deleteAppointment);
 
 export default router;
