@@ -18,6 +18,7 @@ export const createAppointment = async (req, res) => {
       description,
       sex,
       age,
+      address,
       date,
       time
     } = req.body;
@@ -58,6 +59,7 @@ export const createAppointment = async (req, res) => {
           age
         },
         date: parsedDate,
+        address,
         time,
         description,
         status: "pending",
@@ -124,6 +126,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
       clientEmail,
       clientPhone,
       sex,
+      address,
       age,
       date,
       time,
@@ -165,6 +168,7 @@ export const marketerCreateCompletedAppointment = async (req, res) => {
         age
       },
       date: parsedDate,
+      address,
       time,
       description,
       status: "review"

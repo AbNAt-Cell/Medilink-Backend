@@ -26,6 +26,7 @@ const appointmentSchema = new mongoose.Schema(
       enum: ["pending", "review", "submitted"],
       default: "pending"
     },
+    address: String,
     assessment: String,
     doctorSignatureUrl: String,
   
