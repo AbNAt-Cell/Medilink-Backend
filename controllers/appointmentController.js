@@ -113,7 +113,7 @@ export const createAppointment = async (req, res) => {
 };
 
 
-export const marketerCreateReviewAppointment = async (req, res) => {
+export const marketerCreateCompletedAppointment = async (req, res) => {
   try {    
     // marketer is the logged-in user
     const marketerId = req.user._id;
