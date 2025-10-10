@@ -424,7 +424,6 @@ export const editAppointment = async (req, res) => {
 
     // Handle legacy client field format (clientName, clientEmail, etc.) - convert to client object
     if (updates.clientName || updates.clientEmail || updates.clientPhone || updates.sex || updates.age) {
-      console.log("🔄 Converting legacy client fields to client object");
       
       // Get current appointment to preserve existing client data
       const currentAppointment = await Appointment.findById(id).lean();
@@ -447,8 +446,6 @@ export const editAppointment = async (req, res) => {
       delete updates.clientPhone;
       delete updates.sex;
       delete updates.age;
-
-      console.log("🔄 Converted client object:", updates.client);
     }
 
     // Validate client object if provided
