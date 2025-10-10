@@ -9,7 +9,7 @@ import {
   deleteAppointment,
   createAppointment,
   getAppointmentDetails,
-  submitAppointment,
+  completeAppointment,
   marketerCreateCompletedAppointment,
   getAppointmentsByDoctorId
 } from "../controllers/appointmentController.js";
@@ -32,8 +32,8 @@ router.post(
 // Marketer's appointments
 router.get("/marketer", protect, requireRole("marketer"), getMarketerAppointments);
 
-//  Doctor submits appointment with comment + signature
-router.patch("/:appointmentId/submit", protect, requireRole("doctor"), submitAppointment);
+//  Doctor completes appointment with assessment + signature
+router.patch("/:appointmentId/submit", protect, requireRole("doctor"), completeAppointment);
 
 // Admin sees all
 router.get("/", protect, requireRole("admin"), getAllAppointments);

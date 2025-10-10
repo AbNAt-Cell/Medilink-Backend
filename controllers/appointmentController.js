@@ -324,110 +324,223 @@ export const getAppointmentDetails = async (req, res) => {
   }
 };
 
-// ✅ Doctor updates appointment with comment + signature
-export const submitAppointment = async (req, res) => {
+// ✅ Doctor completes appointment with assessment + signature
+export const completeAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const { assessment, doctorSignatureUrl } = req.body;
+
+    console.log("🔄 completeAppointment - Appointment ID:", appointmentId);
+    console.log("🔄 completeAppointment - Request body:", { assessment, doctorSignatureUrl });
 
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
     }
 
-    // Only the assigned doctor can submit
-    if (appointment.doctor.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized" });
+    // Any doctor can complete any appointment (no restriction)
+    // Or you can add role-based restriction if needed
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({ message: "Only doctors can complete appointments" });
     }
 
-    // Update fields
+    // Update appointment with assessment and signature
     appointment.assessment = assessment;
-    appointment.doctorSignatureUrl = doctorSignatureUrl || req.user.signatureUrl; // fallback to stored signature
-    appointment.status = "submitted";
+    appointment.doctorSignatureUrl = doctorSignatureUrl || req.user.signatureUrl;
+    appointment.status = "submitted"; // Change status to completed instead of submitted
 
+    
     await appointment.save();
 
-    // Notify marketer + admin
-    await Notification.create({
-      user: appointment.marketer,
-      type: "appointment",
-      message: "📋 Appointment has been submitted by the doctor.",
-      link: `/appointments/${appointment._id}`
-    });
 
-    // Socket push
-    const marketerSocket = getUserSocket(appointment.marketer);
-    if (marketerSocket) {
-      req.io.to(marketerSocket).emit("notification:new", {
-        message: "📋 Appointment submitted by doctor",
-        appointment
-      });
+    // Optional: Notify relevant parties about completion
+    const notificationMessage = "✅ Appointment has been completed by the doctor.";
+    
+    // Notify marketer if exists
+    if (appointment.marketer) {
+      try {
+        await Notification.create({
+          user: appointment.marketer,
+          type: "appointment",
+          message: notificationMessage,
+          link: `/appointments/${appointment._id}`
+        });
+
+        const marketerSocket = getUserSocket(appointment.marketer);
+        if (marketerSocket && req.io) {
+          req.io.to(marketerSocket).emit("notification:new", {
+            message: notificationMessage,
+            appointment
+          });
+        }
+      } catch (notifErr) {
+        console.error("⚠️ Marketer notification error:", notifErr);
+      }
     }
 
-    res.json({ message: "Appointment submitted successfully", appointment });
+    // Notify appointment creator if different from current doctor
+    if (appointment.doctor && appointment.doctor.toString() !== req.user._id.toString()) {
+      try {
+        await Notification.create({
+          user: appointment.doctor,
+          type: "appointment", 
+          message: notificationMessage,
+          link: `/appointments/${appointment._id}`
+        });
+
+        const doctorSocket = getUserSocket(appointment.doctor);
+        if (doctorSocket && req.io) {
+          req.io.to(doctorSocket).emit("notification:new", {
+            message: notificationMessage,
+            appointment
+          });
+        }
+      } catch (notifErr) {
+        console.error("⚠️ Doctor notification error:", notifErr);
+      }
+    }
+
+    res.json({ 
+      message: "Appointment completed successfully", 
+      appointment: {
+        ...appointment.toObject(),
+        date: formatDate(appointment.date)
+      }
+    });
   } catch (err) {
-    console.error("❌ Submit appointment error:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Complete appointment error:", err);
+    res.status(500).json({ 
+      message: "Server error", 
+      error: err.message 
+    });
   }
 };
 
 // Edit appointment
 export const editAppointment = async (req, res) => {
   try {
-    const { appointmentId } = req.params;
+    const { id } = req.params;
     const updates = req.body;
 
-    // Handle client field validation - prevent casting errors
-    if (updates.client && typeof updates.client === 'string') {
-      console.log("⚠️ Warning: Received string value for client field, expected object. Skipping client update.");
-      delete updates.client;
+    // Handle legacy client field format (clientName, clientEmail, etc.) - convert to client object
+    if (updates.clientName || updates.clientEmail || updates.clientPhone || updates.sex || updates.age) {
+      console.log("🔄 Converting legacy client fields to client object");
+      
+      // Get current appointment to preserve existing client data
+      const currentAppointment = await Appointment.findById(id).lean();
+      if (!currentAppointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Build client object, preserving existing values if new ones aren't provided
+      updates.client = {
+        name: updates.clientName || currentAppointment.client?.name,
+        email: updates.clientEmail || currentAppointment.client?.email,
+        phone: updates.clientPhone || currentAppointment.client?.phone,
+        sex: updates.sex || currentAppointment.client?.sex,
+        age: updates.age || currentAppointment.client?.age
+      };
+
+      // Remove legacy fields from updates
+      delete updates.clientName;
+      delete updates.clientEmail; 
+      delete updates.clientPhone;
+      delete updates.sex;
+      delete updates.age;
+
+      console.log("🔄 Converted client object:", updates.client);
     }
 
-    const appointment = await Appointment.findByIdAndUpdate(appointmentId, updates, { new: true }).lean();
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    // Validate client object if provided
+    if (updates.client) {
+      if (typeof updates.client !== 'object' || Array.isArray(updates.client)) {
+        return res.status(400).json({ 
+          message: "Invalid client format. Client must be an object.",
+          example: {
+            client: {
+              name: "John Doe",
+              email: "john@email.com", 
+              phone: "+1234567890",
+              sex: "male",
+              age: 30
+            }
+          }
+        });
+      }
+    }
 
+    // Handle date parsing if provided
+    if (updates.date && typeof updates.date === "string" && updates.date.includes("/")) {
+      const parts = updates.date.split("/");
+      if (parts.length === 3) {
+        let [day, month, year] = parts;
+        day = day.padStart(2, "0");
+        month = month.padStart(2, "0");
+        updates.date = new Date(`${year}-${month}-${day}`);
+        if (isNaN(updates.date)) {
+          return res.status(400).json({ message: "Invalid date format. Use dd/mm/yyyy." });
+        }
+      }
+    }
+    
+    const appointment = await Appointment.findByIdAndUpdate(
+      id, 
+      updates, 
+      { 
+        new: true, 
+        runValidators: true  // ✅ Ensure validations run
+      }
+    ).lean();
+
+    if (!appointment) {
+      console.log("❌ Appointment not found with ID:", id);
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    console.log("✅ Appointment updated successfully:", appointment._id);
+
+    // Format date for response
     appointment.date = formatDate(appointment.date);
 
     // Notify doctor + marketer
-    const users = [appointment.doctor, appointment.marketer];
+    const users = [appointment.doctor, appointment.marketer].filter(Boolean);
     for (let userId of users) {
-      if (!userId) continue;
-      const notif = await Notification.create({
-        user: userId,
-        type: "appointment",
-        message: "✏️ Appointment was updated.",
-        link: `/appointments/${appointment._id}`
-      });
-      const socketId = getUserSocket(userId);
-      if (socketId) req.io.to(socketId).emit("notification:new", notif);
+      try {
+        const notif = await Notification.create({
+          user: userId,
+          type: "appointment", 
+          message: "✏️ Appointment was updated.",
+          link: `/appointments/${appointment._id}`
+        });
+        const socketId = getUserSocket(userId);
+        if (socketId && req.io) {
+          req.io.to(socketId).emit("notification:new", notif);
+        }
+      } catch (notifErr) {
+        console.error("⚠️ Notification error:", notifErr);
+      }
     }
 
-    res.json(appointment);
+    res.json({ 
+      message: "Appointment updated successfully",
+      appointment 
+    });
   } catch (err) {
     console.error("❌ editAppointment error:", err);
     
-    // Handle client casting errors specifically
-    if (err.message && err.message.includes("Cast to Embedded failed")) {
-      return res.status(400).json({ 
-        message: "Invalid client format. Client must be an object with properties like name, email, phone, etc.", 
-        example: {
-          client: {
-            name: "John Doe",
-            email: "john@email.com",
-            phone: "+1234567890",
-            sex: "male",
-            age: 30
-          }
-        }
-      });
-    }
-
     // Handle validation errors
     if (err.name === 'ValidationError') {
       const errors = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({ 
         message: "Validation error", 
         errors 
+      });
+    }
+
+    // Handle cast errors
+    if (err.name === 'CastError') {
+      return res.status(400).json({ 
+        message: `Invalid ${err.path}: ${err.value}` 
       });
     }
 
