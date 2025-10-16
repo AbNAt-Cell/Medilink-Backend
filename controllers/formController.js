@@ -5,7 +5,7 @@ import { getUserSocket } from "../socket/socket.js";
 import User from "../models/userModel.js";
 import { formatDate } from "../services/formatDate.js";
 
-// ✅ Marketer submits a new form (creates Form + pending Appointment)
+// Marketer submits a new form (creates Form + pending Appointment)
 export const submitForm = async (req, res) => {
   try {
     const {
@@ -163,7 +163,7 @@ export const acceptForm = async (req, res) => {
     const marketerNotif = await Notification.create({
       user: form.marketer,
       type: "appointment",
-      message: "📢 A doctor accepted your form. Appointment created.",
+      message: "A doctor accepted your form. Appointment created.",
       link: `/appointments/${appointment._id}`
     });
     const marketerSocket = getUserSocket(form.marketer);
@@ -193,7 +193,7 @@ export const getDoctorForms = async (req, res) => {
 
     res.json(formatted);
   } catch (err) {
-    console.error("❌ getDoctorForms error:", err);
+    console.error("getDoctorForms error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -214,7 +214,7 @@ export const getAllForms = async (req, res) => {
 
     res.json(formatted);
   } catch (err) {
-    console.error("❌ getAllForms error:", err);
+    console.error("getAllForms error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

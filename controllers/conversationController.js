@@ -57,7 +57,7 @@ export const startConversation = async (req, res) => {
 
     res.json(conversationObj);
   } catch (err) {
-    console.error("❌ startConversation error:", err);
+    console.error("startConversation error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -83,7 +83,7 @@ export const getMyConversations = async (req, res) => {
       conversationObj.participants = conversationObj.participants.map(participant => {
         const participantId = participant._id.toString();
         const isOnline = onlineUsers.has(participantId);
-        console.log(`👤 User ${participant.firstname} ${participant.lastname} (${participantId}): ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+        console.log(`User ${participant.firstname} ${participant.lastname} (${participantId}): ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
         
         const updatedParticipant = {
           _id: participant._id,
@@ -95,17 +95,17 @@ export const getMyConversations = async (req, res) => {
           isOnline: isOnline
         };
         
-        console.log(`✅ Updated participant:`, JSON.stringify(updatedParticipant, null, 2));
+        console.log(`Updated participant:`, JSON.stringify(updatedParticipant, null, 2));
         return updatedParticipant;
       });
       
       return conversationObj;
     });
 
-    console.log("✅ Sending conversations with online status");
+    console.log("Sending conversations with online status");
     res.json(conversationsWithOnlineStatus);
   } catch (err) {
-    console.error("❌ getMyConversations error:", err);
+    console.error("getMyConversations error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

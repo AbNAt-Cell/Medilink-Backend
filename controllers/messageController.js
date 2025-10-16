@@ -31,37 +31,37 @@ export const sendMessage = async (req, res) => {
     } else if (url) {
       switch (type) {
         case "voice":
-          lastMessage = "🎙️ Voice message";
+          lastMessage = "Voice message";
           break;
         case "image":
-          lastMessage = "📷 Image";
+          lastMessage = "Image";
           break;
         case "video":
-          lastMessage = "🎥 Video";
+          lastMessage = "Video";
           break;
         case "audio":
-          lastMessage = "🎵 Audio";
+          lastMessage = "Audio";
           break;
         case "audioCall":
-          lastMessage = "📞 Audio call";
+          lastMessage = "Audio call";
           break;
         case "videoCall":
-          lastMessage = "📹 Video call";
+          lastMessage = "Video call";
           break;
         case "file":
-          lastMessage = "📎 File";
+          lastMessage = "File";
           break;
         default:
-          lastMessage = "📎 Attachment";
+          lastMessage = "Attachment";
       }
     } else {
       // Handle call messages without URL (for call notifications)
       switch (type) {
         case "audioCall":
-          lastMessage = "📞 Audio call";
+          lastMessage = "Audio call";
           break;
         case "videoCall":
-          lastMessage = "📹 Video call";
+          lastMessage = "Video call";
           break;
         default:
           lastMessage = "New message";
@@ -126,5 +126,91 @@ export const markAsRead = async (req, res) => {
     res.json({ message: "Marked as read" });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete message (only sender can delete their own messages)
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    // Find the message
+    const message = await Message.findById(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Check if user is the sender of the message
+    if (message.sender.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "You can only delete your own messages" });
+    }
+
+    // Delete the message
+    await Message.findByIdAndDelete(messageId);
+
+    // Update conversation's last message if this was the last message
+    const conversationId = message.conversation;
+    const remainingMessages = await Message.find({ conversation: conversationId })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    if (remainingMessages.length > 0) {
+      // Update with the new last message
+      const lastMsg = remainingMessages[0];
+      let lastMessage;
+      
+      if (lastMsg.text) {
+        lastMessage = lastMsg.text;
+      } else if (lastMsg.url) {
+        switch (lastMsg.type) {
+          case "voice":
+            lastMessage = "Voice message";
+            break;
+          case "image":
+            lastMessage = "Image";
+            break;
+          case "video":
+            lastMessage = "Video";
+            break;
+          case "audio":
+            lastMessage = "Audio";
+            break;
+          case "audioCall":
+            lastMessage = "Audio call";
+            break;
+          case "videoCall":
+            lastMessage = "Video call";
+            break;
+          case "file":
+            lastMessage = "File";
+            break;
+          default:
+            lastMessage = "Attachment";
+        }
+      } else {
+        lastMessage = "New message";
+      }
+
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage,
+        updatedAt: new Date(),
+      });
+    } else {
+      // No messages left in conversation
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: "No messages yet",
+        updatedAt: new Date(),
+      });
+    }
+
+    res.json({ 
+      message: "Message deleted successfully",
+      deletedMessageId: messageId 
+    });
+  } catch (err) {
+    console.error("❌ Delete message error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
