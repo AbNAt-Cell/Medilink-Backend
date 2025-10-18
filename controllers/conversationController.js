@@ -1,7 +1,7 @@
 import Conversation from "../models/Conversation.js";
 import User from "../models/userModel.js";
+import Message from "../models/messages.js";
 import { onlineUsers } from "../socket/socket.js";
-// import Message from "../models/messages.js";
 
 
 // Start conversation between two users
@@ -73,7 +73,7 @@ export const getMyConversations = async (req, res) => {
       .populate("participants", "firstname lastname email role avatarUrl")
       .sort({ updatedAt: -1 });
 
-    console.log(`📋 Found ${conversations.length} conversations`);
+    console.log(`Found ${conversations.length} conversations`);
 
     // Add online status to each conversation
     const conversationsWithOnlineStatus = conversations.map(conversation => {
@@ -107,5 +107,43 @@ export const getMyConversations = async (req, res) => {
   } catch (err) {
     console.error("getMyConversations error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Delete conversation (only participants can delete)
+export const deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    // Find the conversation
+    const conversation = await Conversation.findById(conversationId);
+    
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    // Check if user is a participant in the conversation
+    const isParticipant = conversation.participants.some(
+      participantId => participantId.toString() === userId.toString()
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: "You can only delete conversations you are part of" });
+    }
+
+    // Delete all messages in the conversation first
+    await Message.deleteMany({ conversation: conversationId });
+
+    // Delete the conversation
+    await Conversation.findByIdAndDelete(conversationId);
+
+    res.json({ 
+      message: "Conversation deleted successfully",
+      deletedConversationId: conversationId 
+    });
+  } catch (err) {
+    console.error("Delete conversation error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
