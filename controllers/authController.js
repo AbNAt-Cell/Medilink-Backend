@@ -120,7 +120,28 @@ export const login = async (req, res) => {
 
 // Return the current user
 export const me = async (req, res) => {
-  res.json(req.user);
+  try {
+    // Fetch user with all fields except password and sensitive data
+    const user = await User.findById(req.user._id)
+      .select("-password -resetPasswordToken -resetPasswordExpires");
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Add online status to user profile
+    const userObj = user.toObject();
+    const isOnline = onlineUsers.has(req.user._id.toString());
+    const userWithOnlineStatus = {
+      ...userObj,
+      isOnline: isOnline
+    };
+    
+    res.json(userWithOnlineStatus);
+  } catch (err) {
+    console.error("❌ me endpoint error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
 };
 
 
