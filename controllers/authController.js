@@ -134,12 +134,13 @@ export const me = async (req, res) => {
     const isOnline = onlineUsers.has(req.user._id.toString());
     const userWithOnlineStatus = {
       ...userObj,
+      avatarUrl: userObj.avatarUrl || null, // Ensure avatarUrl is always present
       isOnline: isOnline
     };
     
     res.json(userWithOnlineStatus);
   } catch (err) {
-    console.error("❌ me endpoint error:", err);
+    console.error("me endpoint error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
