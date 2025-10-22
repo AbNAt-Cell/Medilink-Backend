@@ -5,6 +5,7 @@ import Message from "../../models/messages.js";
 import Conversation from "../../models/Conversation.js";
 import Notification from "../../models/Notifications.js";
 import Form from "../../models/Form.js";
+import Appointment from "../../models/Appointments.js";
 
 const generateToken = (id, role) =>
   jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
@@ -131,7 +132,7 @@ export const deleteUser = async (req, res) => {
       }
     }
 
-    // Clean up related data
+    // Clean up related data efficiently with Promise.all
     await Promise.all([
       // Remove user from conversations (update participants)
       Conversation.updateMany(
@@ -149,8 +150,19 @@ export const deleteUser = async (req, res) => {
       Form.updateMany(
         { claimedBy: id },
         { $unset: { claimedBy: 1 }, status: "pending" }
-      )
+      ),
+
+      // Handle appointments - delete appointments where user is doctor or marketer
+      Appointment.deleteMany({
+        $or: [
+          { doctor: id },
+          { marketer: id }
+        ]
+      })
     ]);
+
+    // Remove empty conversations (no participants left)
+    await Conversation.deleteMany({ participants: { $size: 0 } });
 
     // Remove from online users if connected
     if (onlineUsers.has(id)) {
